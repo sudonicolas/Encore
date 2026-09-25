@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Its text. Switched to white in the dark appearance (see icon.json). -->
+  <rect x="300" y="460" width="424" height="48" rx="24" fill="#6D4D3E" fill-opacity="0.4"/>
+  <rect x="300" y="548" width="424" height="48" rx="24" fill="#6D4D3E" fill-opacity="0.4"/>
+  <rect x="300" y="636" width="240" height="48" rx="24" fill="#6D4D3E" fill-opacity="0.4"/>
+</svg>
