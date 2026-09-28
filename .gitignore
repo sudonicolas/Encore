@@ -1,0 +1,37 @@
+# Build output (build.sh writes Encore.app, Encore.pkg and the screenshot tool here)
+.build/
+build/
+DerivedData/
+*.pkg
+*.xcarchive
+*.dSYM/
+*.dSYM.zip
+
+# Xcode and SwiftPM local state
+.swiftpm/
+*.xcodeproj
+xcuserdata/
+
+# Signing and App Store credentials: never commit these
+*.provisionprofile
+*.mobileprovision
+*.p12
+*.p8
+*.cer
+*.certSigningRequest
+AuthKey_*.p8
+.env
+.env.*
+
+# Editors and local tool settings
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+._*
+
+# Private working docs: App Store listing drafts and the accessibility plan
+docs/app-store/listing.md
+docs/ACCESSIBILITY.md
