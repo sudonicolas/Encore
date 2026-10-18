@@ -13,6 +13,8 @@ enum Intelligence {
         case notReady
         /// This Mac can't run Apple Intelligence.
         case unsupported
+        /// Foundation Models requires a newer version of macOS.
+        case requiresMacOS26
 
         var summary: String {
             switch self {
@@ -20,6 +22,7 @@ enum Intelligence {
             case .notEnabled: return "Turned off"
             case .notReady: return "Getting ready"
             case .unsupported: return "Not available on this Mac"
+            case .requiresMacOS26: return "Requires macOS 26"
             }
         }
 
@@ -33,11 +36,14 @@ enum Intelligence {
                 return "Apple Intelligence is still downloading. This can take a while after it's turned on."
             case .unsupported:
                 return "Apple Intelligence isn't available on this Mac."
+            case .requiresMacOS26:
+                return "Apple Intelligence features in \(AppInfo.name) require macOS 26 or later."
             }
         }
     }
 
     static var status: Status {
+        guard #available(macOS 26.0, *) else { return .requiresMacOS26 }
         switch SystemLanguageModel.default.availability {
         case .available:
             return .available
@@ -71,16 +77,11 @@ enum Intelligence {
     private static let busyMessage = "Apple Intelligence is busy. Try again in a moment."
     private static let genericMessage = "Apple Intelligence couldn't finish. Try again."
 
-    // macOS 27 reports failures as `LanguageModelError`; macOS 26 as
-    // `LanguageModelSession.GenerationError`. Both are handled so behaviour matches on each.
+    // Foundation Models errors are only available with the framework on macOS 26+.
 
     /// Whether generation failed because the input didn't fit the context window.
     static func isContextOverflow(_ error: Error) -> Bool {
-        if #available(macOS 27.0, *), let error = error as? LanguageModelError,
-           case .contextSizeExceeded = error {
-            return true
-        }
-        if let error = error as? LanguageModelSession.GenerationError,
+        if #available(macOS 26.0, *), let error = error as? LanguageModelSession.GenerationError,
            case .exceededContextWindowSize = error {
             return true
         }
@@ -90,15 +91,7 @@ enum Intelligence {
     /// A sentence to show when generation fails.
     static func message(for error: Error) -> String {
         if isContextOverflow(error) { return tooLongMessage }
-        if #available(macOS 27.0, *), let error = error as? LanguageModelError {
-            switch error {
-            case .guardrailViolation, .refusal: return declinedMessage
-            case .unsupportedLanguageOrLocale: return languageMessage
-            case .rateLimited, .timeout: return busyMessage
-            default: return genericMessage
-            }
-        }
-        if let error = error as? LanguageModelSession.GenerationError {
+        if #available(macOS 26.0, *), let error = error as? LanguageModelSession.GenerationError {
             switch error {
             case .guardrailViolation, .refusal: return declinedMessage
             case .unsupportedLanguageOrLocale: return languageMessage

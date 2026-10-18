@@ -238,14 +238,14 @@ struct ConfirmingButton: View {
     private var glassBody: some View {
         if isArmed {
             Button(confirmTitle, action: tap)
-                .buttonStyle(.glassProminent)
+                .adaptiveGlassButton(prominent: true)
                 .tint(Color.destructiveFill)
         } else {
             Button(action: tap) {
                 Label(title, systemImage: systemImage)
                     .labelStyle(.iconOnly)
             }
-            .buttonStyle(.glass)
+            .adaptiveGlassButton()
             .buttonBorderShape(.circle)
         }
     }

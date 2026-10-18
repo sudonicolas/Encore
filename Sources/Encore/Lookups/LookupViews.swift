@@ -71,7 +71,7 @@ struct LookupsSection: View {
                 .help("Look up \u{201C}\(topic)\u{201D} on Wikipedia")
             }
         }
-        .buttonStyle(.glass)
+        .adaptiveGlassButton()
         // Bigger buttons to match larger text.
         .controlSize(textScale >= 1.5 ? .large : (textScale > 1 ? .regular : .small))
     }

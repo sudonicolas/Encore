@@ -85,15 +85,24 @@ struct ClippingRowView: View {
         .padding(.trailing, 2)
         .background {
             if isHighlighted {
-                ConcentricRectangle.row
-                    .fill(Color.accentColor.opacity(0.16))
-                    .overlay {
-                        ConcentricRectangle.row
-                            .stroke(Color.accentColor.opacity(contrast == .increased ? 1 : 0.55), lineWidth: 1)
-                    }
+                if #available(macOS 26.0, *) {
+                    ConcentricRectangle.row
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay {
+                            ConcentricRectangle.row
+                                .stroke(Color.accentColor.opacity(contrast == .increased ? 1 : 0.55), lineWidth: 1)
+                        }
+                } else {
+                    RoundedRectangle(cornerRadius: UIRadius.rowMinimum, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: UIRadius.rowMinimum, style: .continuous)
+                                .stroke(Color.accentColor.opacity(contrast == .increased ? 1 : 0.55), lineWidth: 1)
+                        }
+                }
             }
         }
-        .contentShape(.row)
+        .adaptiveRowContentShape()
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
             onHoverChange(hovering)

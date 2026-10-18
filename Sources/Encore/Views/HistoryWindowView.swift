@@ -540,7 +540,9 @@ private struct HistoryDetail: View {
                         ToolbarItem {
                             IntelligenceMenu(clipping: clipping, runner: runner)
                         }
-                        ToolbarSpacer(.fixed)
+                        if #available(macOS 26.0, *) {
+                            ToolbarSpacer(.fixed)
+                        }
                     }
                     ToolbarItemGroup {
                         ClippingCopyButton(clipping: clipping, textOverride: selectedText)

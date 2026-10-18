@@ -100,16 +100,17 @@ cp "$ROOT_DIR/Resources/PrivacyInfo.xcprivacy" "$APP_BUNDLE/Contents/Resources/"
 cp "$ROOT_DIR/Resources/container-migration.plist" "$APP_BUNDLE/Contents/Resources/"
 
 # The icon is an Icon Composer document (layered Liquid Glass artwork). actool compiles
-# it into Assets.car — which macOS renders live in light, dark, clear and tinted
-# appearances — plus an AppIcon.icns fallback. The same Assets.car carries Encore's
-# custom SF Symbols (the menu bar mark) from Resources/Assets.xcassets.
+# it into Assets.car — which macOS 26 renders live in light, dark, clear and tinted
+# appearances — plus an AppIcon.icns fallback, which is what macOS 15 uses. The same
+# Assets.car carries Encore's custom SF Symbols (the menu bar mark) from
+# Resources/Assets.xcassets, so actool runs whether or not the icns path is needed.
 echo "==> Compiling app icon and symbols..."
 PARTIAL_PLIST="$(mktemp -t encore-icon)"
 ACTOOL_STATUS=0
 ACTOOL_OUTPUT="$(xcrun actool "$ICON_SOURCE" "$ASSET_SOURCE" \
     --compile "$APP_BUNDLE/Contents/Resources" \
     --platform macosx \
-    --minimum-deployment-target 26.0 \
+    --minimum-deployment-target 15.0 \
     --app-icon AppIcon \
     --output-partial-info-plist "$PARTIAL_PLIST" \
     --output-format human-readable-text \
@@ -117,7 +118,16 @@ ACTOOL_OUTPUT="$(xcrun actool "$ICON_SOURCE" "$ASSET_SOURCE" \
 rm -f "$PARTIAL_PLIST"
 if [ "$ACTOOL_STATUS" -ne 0 ] || grep -qiE "error|warning" <<< "$ACTOOL_OUTPUT"; then
     echo "$ACTOOL_OUTPUT" >&2
+    # Warnings are reported and tolerated; a real failure is not, because the app would
+    # ship with no icon and no menu bar symbol.
     [ "$ACTOOL_STATUS" -eq 0 ] || exit "$ACTOOL_STATUS"
+fi
+if [ "$ACTOOL_STATUS" -ne 0 ]; then
+    rm -f "$APP_BUNDLE/Contents/Resources/Assets.car"
+fi
+if [ ! -f "$APP_BUNDLE/Contents/Resources/AppIcon.icns" ]; then
+    sips -s format icns "$ROOT_DIR/docs/icon.png" \
+        --out "$APP_BUNDLE/Contents/Resources/AppIcon.icns" > /dev/null
 fi
 
 if [ "$MODE" = "app-store" ]; then

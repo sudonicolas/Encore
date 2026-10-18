@@ -2,6 +2,7 @@ import Foundation
 import FoundationModels
 import NaturalLanguage
 
+@available(macOS 26.0, *)
 @Generable
 struct GeneratedTitle {
     @Guide(description: "Two to six words naming what the snippet is, in sentence case, with no quotes and no final period.")
@@ -88,12 +89,13 @@ final class SmartTitler {
                   Self.needsTitle(clipping),
                   let text = clipping.text else { continue }
             attempted.insert(id)
-            if let title = try? await Self.title(for: text) {
+            if #available(macOS 26.0, *), let title = try? await Self.title(for: text) {
                 store.setSmartTitle(title, for: id)
             }
         }
     }
 
+    @available(macOS 26.0, *)
     private static func title(for text: String) async throws -> String? {
         let snippet = Intelligence.excerpt(text, maxLength: maxInputLength).text
         // A fresh session per snippet, so one clipping never colours another's title.
@@ -101,7 +103,7 @@ final class SmartTitler {
         let response = try await session.respond(
             to: "\(languageHint(for: snippet))Snippet:\n\(snippet)",
             generating: GeneratedTitle.self,
-            options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 60)
+            options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 60)
         )
         return cleaned(response.content.title)
     }

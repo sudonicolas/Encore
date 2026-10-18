@@ -38,8 +38,8 @@ struct ClippingDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         // A scroll-edge bar (not a divider + material strip): content blurs softly
-        // beneath it as it scrolls, per the macOS 26+ scroll edge effect.
-        .safeAreaBar(edge: .bottom) {
+        // beneath it as it scrolls on macOS 26, and a plain material strip on 15.
+        .adaptiveSafeAreaBar(edge: .bottom) {
             metadata
         }
         // Whatever ends the viewing — Back, another clipping, the window closing — also

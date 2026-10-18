@@ -29,7 +29,7 @@ struct IntelligenceSettingsView: View {
                     }
                 }
                 Toggle("Title long clippings automatically", isOn: $store.generatesSmartTitles)
-                    .disabled(status == .unsupported)
+                    .disabled(status == .unsupported || status == .requiresMacOS26)
             } header: {
                 Text("Apple Intelligence")
             } footer: {

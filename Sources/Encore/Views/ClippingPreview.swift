@@ -493,7 +493,7 @@ struct ClippingPreviewView: View {
         .padding(ClippingPreview.padding)
         .frame(width: preview.size.width, height: preview.size.height, alignment: .topLeading)
         .environment(\.textScale, preview.textScale)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: ClippingPreview.cornerRadius, style: .continuous))
+        .adaptiveGlass(in: RoundedRectangle(cornerRadius: ClippingPreview.cornerRadius, style: .continuous))
         .accessibilityHidden(true)
     }
 

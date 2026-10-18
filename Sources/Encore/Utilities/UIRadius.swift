@@ -16,6 +16,7 @@ enum UIRadius {
     static let thumbnail: CGFloat = 6
 }
 
+@available(macOS 26.0, *)
 extension Shape where Self == ConcentricRectangle {
     /// Row highlight: concentric with the enclosing container, never tighter than the floor.
     static var row: ConcentricRectangle {

@@ -14,7 +14,9 @@ struct IntelligenceMenu: View {
     /// Whether the menu has anything to offer: a non-empty text clipping, on a Mac that
     /// can run Apple Intelligence.
     static func isShown(for clipping: Clipping) -> Bool {
-        text(of: clipping) != nil && Intelligence.status != .unsupported
+        let status = Intelligence.status
+        return text(of: clipping) != nil && status != .unsupported
+            && status != .requiresMacOS26
     }
 
     private static func text(of clipping: Clipping) -> String? {
@@ -26,7 +28,8 @@ struct IntelligenceMenu: View {
 
     var body: some View {
         let status = Intelligence.status
-        if let text = Self.text(of: clipping), status != .unsupported {
+        if let text = Self.text(of: clipping), status != .unsupported,
+           status != .requiresMacOS26 {
             Menu {
                 if status == .available {
                     Section("Rewrite") {
