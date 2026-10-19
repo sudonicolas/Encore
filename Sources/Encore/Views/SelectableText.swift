@@ -16,6 +16,7 @@ struct SelectableText: View {
     let text: String
     var highlightQuery: String = ""
     @Binding var selectedText: String?
+    let layoutWidth: CGFloat
 
     @Environment(\.textScale) private var textScale
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
@@ -26,8 +27,10 @@ struct SelectableText: View {
             highlightQuery: highlightQuery,
             fontSize: (NSFont.preferredFont(forTextStyle: .body).pointSize * textScale).rounded(),
             underlinesMatches: differentiateWithoutColor,
-            selectedText: $selectedText
+            selectedText: $selectedText,
+            layoutWidth: layoutWidth
         )
+        .frame(width: layoutWidth, alignment: .leading)
     }
 }
 
@@ -37,6 +40,7 @@ private struct SelectableTextRepresentable: NSViewRepresentable {
     let fontSize: CGFloat
     let underlinesMatches: Bool
     @Binding var selectedText: String?
+    let layoutWidth: CGFloat
 
     func makeNSView(context: Context) -> NSTextView {
         let textView = NSTextView()
@@ -45,7 +49,13 @@ private struct SelectableTextRepresentable: NSViewRepresentable {
         textView.drawsBackground = false
         textView.textContainerInset = .zero
         textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.widthTracksTextView = true
+        // SwiftUI measures the representable before assigning its frame. On macOS 15,
+        // tracking that initial zero-width frame overwrites the width supplied below.
+        if #available(macOS 26.0, *) {
+            textView.textContainer?.widthTracksTextView = true
+        } else {
+            textView.textContainer?.widthTracksTextView = false
+        }
         textView.isHorizontallyResizable = false
         textView.isVerticallyResizable = true
         textView.autoresizingMask = [.width]
@@ -70,10 +80,10 @@ private struct SelectableTextRepresentable: NSViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
-        guard let width = proposal.width, width.isFinite, width > 0,
-              let container = nsView.textContainer, let layoutManager = nsView.layoutManager else {
+        guard let container = nsView.textContainer, let layoutManager = nsView.layoutManager else {
             return nil
         }
+        let width = max(1, layoutWidth)
         container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
         layoutManager.ensureLayout(for: container)
         let rect = layoutManager.usedRect(for: container)

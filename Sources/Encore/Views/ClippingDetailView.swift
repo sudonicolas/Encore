@@ -21,21 +21,23 @@ struct ClippingDetailView: View {
     @Environment(ClipboardStore.self) private var store
 
     var body: some View {
-        ScrollView {
-            content
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        // A scroll-edge bar (not a divider + material strip): content blurs softly
-        // beneath it as it scrolls, per the macOS 26+ scroll edge effect.
-        .safeAreaBar(edge: .bottom) {
-            metadata
+        GeometryReader { geometry in
+            ScrollView {
+                content(width: max(1, geometry.size.width - 40))
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .frame(width: geometry.size.width, alignment: .leading)
+            }
+            // A scroll-edge bar (not a divider + material strip): content blurs softly
+            // beneath it as it scrolls, per the macOS 26+ scroll edge effect.
+            .adaptiveSafeAreaBar(edge: .bottom) {
+                metadata
+            }
         }
     }
 
     @ViewBuilder
-    private var content: some View {
+    private func content(width: CGFloat) -> some View {
         switch clipping.kind {
         case .text:
             let text = clipping.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -61,7 +63,7 @@ struct ClippingDetailView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityAddTraits(.isHeader)
                         }
-                        SelectableText(text: text, highlightQuery: searchQuery, selectedText: selectedText)
+                        SelectableText(text: text, highlightQuery: searchQuery, selectedText: selectedText, layoutWidth: width)
                     }
                     if store.offersOnlineLookups {
                         LookupsSection(text: text)

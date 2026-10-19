@@ -131,7 +131,7 @@ struct MenuBarContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaBar(edge: .top) {
+        .adaptiveSafeAreaBar(edge: .top) {
             VStack(spacing: 8) {
                 searchField
                 if store.isPasteboardAccessDenied {
@@ -147,7 +147,7 @@ struct MenuBarContentView: View {
             .animation(.snappy(duration: 0.25).motionSafe, value: store.isRecordingEnabled)
             .animation(.snappy(duration: 0.25).motionSafe, value: store.isPasteboardAccessDenied)
         }
-        .safeAreaBar(edge: .bottom) {
+        .adaptiveSafeAreaBar(edge: .bottom) {
             footer
         }
     }
@@ -210,7 +210,7 @@ struct MenuBarContentView: View {
                 .scaledFont(.callout)
             Spacer()
             Button("Resume") { setRecording(true) }
-                .buttonStyle(.glass)
+                .adaptiveGlassButton()
                 .controlSize(.small)
                 .accessibilityLabel("Resume Recording")
                 .accessibilityInputLabels(["Resume", "Resume Recording"])
@@ -236,7 +236,7 @@ struct MenuBarContentView: View {
                 .lineLimit(2)
             Spacer()
             Button("Allow\u{2026}") { ClipboardMonitor.openPasteboardPrivacySettings() }
-                .buttonStyle(.glass)
+                .adaptiveGlassButton()
                 .controlSize(.small)
                 .help("Allow \(AppInfo.name) in Privacy & Security \u{2192} Paste from Other Apps")
                 .accessibilityLabel("Allow Clipboard Access")
@@ -326,7 +326,7 @@ struct MenuBarContentView: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .contentShape(.row)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help("Open History")
@@ -350,7 +350,7 @@ struct MenuBarContentView: View {
     /// Floating glass action bar. Recently Deleted lives here (not just in History) so
     /// recovering something is one click from the menu bar.
     private var footer: some View {
-        GlassEffectContainer(spacing: 8) {
+        AdaptiveGlassContainer(spacing: 8) {
             HStack(spacing: 8) {
                 Button {
                     navigator.showHistory()
@@ -416,13 +416,14 @@ struct MenuBarContentView: View {
                     Label("More", systemImage: "ellipsis.circle")
                 }
                 .frame(width: 32, height: 32)
+                .compactOnLegacyMacOS()
                 .help("More")
                 .accessibilityInputLabels(["More", "More Options"])
                 .popover(isPresented: $isShowingMoreMenu, arrowEdge: .bottom) {
                     moreMenu
                 }
             }
-            .buttonStyle(.glass)
+            .adaptiveGlassButton()
             .buttonBorderShape(.circle)
             .labelStyle(.iconOnly)
             .controlSize(.large)
@@ -463,7 +464,7 @@ struct MenuBarContentView: View {
             selectedText: $selectedText,
             showsSourceAndDate: false
         )
-        .safeAreaBar(edge: .top) {
+        .adaptiveSafeAreaBar(edge: .top) {
             DetailHeader(clipping: clipping, runner: runner, selectedText: selectedText) {
                 go(to: .list)
             }
@@ -657,7 +658,7 @@ private struct DetailHeader: View {
 
             Spacer(minLength: 4)
 
-            GlassEffectContainer(spacing: 6) {
+            AdaptiveGlassContainer(spacing: 6) {
                 HStack(spacing: 6) {
                     IntelligenceMenu(clipping: clipping, runner: runner)
                         .menuStyle(.button)
@@ -667,7 +668,7 @@ private struct DetailHeader: View {
                 }
             }
         }
-        .buttonStyle(.glass)
+        .adaptiveGlassButton()
         .buttonBorderShape(.circle)
         .labelStyle(.iconOnly)
         .controlSize(.large)

@@ -157,6 +157,10 @@ final class TextActionRunner {
     }
 
     private func generate(_ action: TextAction, text: String) async {
+        guard #available(macOS 26.0, *) else {
+            phase = .failed(Intelligence.status.explanation)
+            return
+        }
         var maxLength = action.maxInputLength
         // Token counts vary a lot by language, so if the excerpt still overflows the
         // context window, retry with less of it before giving up.

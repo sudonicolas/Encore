@@ -212,8 +212,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ClipboardMonitor.shared.refreshAccessStatus()
         // Apple Intelligence may have finished downloading since launch.
         SmartTitler.shared.processBacklog()
-        // Activate so typing goes straight into the popover's search field.
-        NSApp.activate()
+        // Closing the previous popover may have hidden Encore to return focus.
+        // A status-item click is an explicit request to use it again, so restore and
+        // activate the app before showing a window that needs to receive clicks.
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
         openedPopoverAt = .now
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

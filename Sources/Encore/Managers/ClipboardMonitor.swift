@@ -47,7 +47,12 @@ final class ClipboardMonitor {
     /// Re-reads whether the user has denied Encore access to the pasteboard in Privacy &
     /// Security → Paste from Other Apps. Cheap, and never itself triggers an alert.
     func refreshAccessStatus() {
-        let denied = NSPasteboard.general.accessBehavior == .alwaysDeny
+        let denied: Bool
+        if #available(macOS 15.4, *) {
+            denied = NSPasteboard.general.accessBehavior == .alwaysDeny
+        } else {
+            denied = false
+        }
         let store = ClipboardStore.shared
         if store.isPasteboardAccessDenied != denied {
             store.isPasteboardAccessDenied = denied
