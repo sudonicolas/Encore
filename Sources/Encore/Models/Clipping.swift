@@ -140,10 +140,12 @@ extension Clipping {
         }
     }
 
-    /// The kind, when the title doesn't already say it: "File" or "Files". Text needs no
-    /// label, and an image's title starts with "Image".
+    /// The kind, when the title doesn't already say it: "File" or "Files", or "Colour" for
+    /// a hex colour, which a row shows as a swatch. Other text needs no label, and an
+    /// image's title starts with "Image".
     var accessibilityKind: String? {
-        kind == .fileURL ? kindTitle : nil
+        if kind == .fileURL { return kindTitle }
+        return color != nil ? "Colour" : nil
     }
 }
 

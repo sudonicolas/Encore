@@ -288,7 +288,17 @@ struct ClippingThumbnail: View {
         // Grows with Text Size, but only half as much, like the row's icon buttons.
         let size = size * (1 + (textScale - 1) / 2)
         Group {
-            if let image = ClippingThumbnails.image(for: clipping) {
+            if let color = clipping.color {
+                // A copied colour shows as itself, with a hairline so white still has an edge.
+                RoundedRectangle(cornerRadius: UIRadius.thumbnail, style: .continuous)
+                    .fill(Color(nsColor: color))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: UIRadius.thumbnail, style: .continuous)
+                            .strokeBorder(.primary.opacity(0.15), lineWidth: 1)
+                    }
+                    .frame(width: size * 0.8, height: size * 0.8)
+                    .frame(width: size, height: size)
+            } else if let image = ClippingThumbnails.image(for: clipping) {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -306,7 +316,7 @@ struct ClippingThumbnail: View {
                     .frame(width: size, height: size)
             }
         }
-        // Photos and app icons keep their real colours under Invert Colors.
+        // Photos, app icons and colour swatches keep their real colours under Invert Colors.
         .accessibilityIgnoresInvertColors()
         .accessibilityHidden(true)
     }

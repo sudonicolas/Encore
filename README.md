@@ -20,6 +20,15 @@ without leaving the menu bar.
 Free and open source. No account, no subscription, no cloud.
 
 <p align="center">
+  <img src="docs/media/colour-swatches.gif" width="320" alt="Encore's menu bar popover: a hex colour is copied and its row shows an orange swatch; then a teal, a yellow and a translucent purple colour each get their own swatch">
+</p>
+
+<p align="center"><sub>
+  New: copy a colour and Encore shows it. Recorded straight from the app by
+  <a href="https://github.com/sudonicolas/doomship">doomship</a>.
+</sub></p>
+
+<p align="center">
   <img src="docs/app-store/portrait/01-hero.png" width="720" alt="Encore clipboard history in the macOS menu bar">
 </p>
 
@@ -65,6 +74,8 @@ Free and open source. No account, no subscription, no cloud.
 - **Pin** what you reuse. Pinned clippings stay at the top and are never trimmed.
 - **Recently Deleted.** Deleting is always recoverable for 30 days, with Undo right away.
 - **No duplicates.** Copying something that's already in history moves it to the top.
+- **Colour swatches.** Copy a hex colour (`#FF6B35`, `#fc0`, or `#6C5CE7CC` with alpha)
+  and its row shows the colour itself, in the popover and in History.
 
 **Apple Intelligence** (on device, requires an Apple Intelligence–capable Mac)
 - **Smart titles.** Long clippings get a two-to-six-word title ("Flight confirmation email",
@@ -85,7 +96,8 @@ Free and open source. No account, no subscription, no cloud.
 - **VoiceOver**: each clipping reads as one item with Copy, Pin, Show Details and Delete
   as actions; results are announced, and rotors jump to pinned clippings, images and files.
 - **Voice Control**: every button has a speakable name.
-- **Keyboard**: ↑ and ↓ in the popover, Return to copy, ⌘↓ to open a clipping.
+- **Keyboard**: ⇧⌘V opens the popover from any app; ↑ and ↓ in the popover, Return to
+  copy, ⌘↓ to open a clipping.
 - **Text Size** up to 200% (Settings → General, or ⌘+ and ⌘−).
 - Follows Reduce Motion, Increase Contrast and Differentiate Without Color, with colours
   that meet Apple's contrast minimums.
@@ -208,7 +220,6 @@ appearances.
   to apps you choose in Settings → Privacy. Builds from before sandboxing kept their data
   in `~/Library/Application Support/Encore/`; `Resources/container-migration.plist` makes
   macOS move it into the container on first launch.
-- There's no global keyboard shortcut to open the popover yet.
 
 ## License
 
