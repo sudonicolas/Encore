@@ -157,14 +157,8 @@ The full policy is in [PRIVACY.md](PRIVACY.md).
 5. Encore asks to read what other apps copy. Choose **Allow**; it can't record anything
    otherwise (see *Clipboard permission* below).
 
-**First time opening it.** Encore isn't notarized by Apple yet, so macOS may say it can't
-verify the app. That's expected, and it only happens once:
-
-1. Click **Done** (not *Move to Trash*).
-2. Open **System Settings → Privacy & Security** and scroll down to the message about
-   Encore.
-3. Click **Open Anyway**, then enter your password or use Touch ID.
-4. Open Encore again and click **Open**.
+Encore is signed with a Developer ID certificate and notarized by Apple, so it opens
+normally — there is no security warning to click through.
 
 To start Encore when you log in, open its menu bar icon, choose Settings and turn on
 *Open at login*. This works once Encore is in Applications, not while it is still running
@@ -202,12 +196,8 @@ drag-to-install image described above. `tools/make-dmg.sh` lays out the window a
 `tools/dmg/make-background.py` draws its backdrop. Laying out the window drives Finder with
 AppleScript, so the first run asks for permission to control it.
 
-Without a Developer ID certificate, the image holds an ad-hoc signed app and its backdrop
-carries the *Open Anyway* steps. To remove the warning for everyone, create a **Developer ID
-Application** certificate with the same Apple Developer Program membership the App Store
-build uses (Xcode → Settings → Accounts → Manage Certificates → +; only the account holder
-can), make an app-specific password at [account.apple.com](https://account.apple.com), and
-store notarization credentials once:
+Released images are signed with a **Developer ID Application** certificate and notarized,
+which is why the download opens with no warning. Build one that way with:
 
 ```sh
 xcrun notarytool store-credentials encore-notary --apple-id you@example.com --team-id TEAMID
@@ -215,8 +205,9 @@ NOTARY_PROFILE=encore-notary ./build.sh --dmg
 ```
 
 `build.sh` signs with the Developer ID certificate it finds, submits the image to Apple,
-waits for the verdict and staples the ticket, so the image opens with no warning at all and
-its backdrop drops the *Open Anyway* steps.
+waits for the verdict and staples the ticket. Without a certificate and `NOTARY_PROFILE` it
+still builds, but the app is ad-hoc signed and the backdrop then carries *Open Anyway* steps
+for whoever opens it. The `store-credentials` step above is only needed once per machine.
 
 To publish it, attach it to a GitHub release under exactly the name `Encore.dmg`:
 `https://github.com/sudonicolas/Encore/releases/latest/download/Encore.dmg` always serves the
