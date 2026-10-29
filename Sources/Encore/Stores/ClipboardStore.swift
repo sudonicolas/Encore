@@ -377,10 +377,16 @@ final class ClipboardStore {
         guard editingIDs.remove(id) != nil,
               let index = clippings.firstIndex(where: { $0.id == id }) else { return }
         if clippings[index].versions?.last?.text == clippings[index].text {
-            clippings[index].versions?.removeLast()
+            // The text ended up exactly as it started, so this was never an edit.
+            let dropped = clippings[index].versions?.popLast()
             if clippings[index].versions?.isEmpty == true {
                 clippings[index].versions = nil
                 clippings[index].editedAt = nil
+            } else if let date = dropped?.date {
+                // The "edited" time goes back with it, rather than keeping the moment of
+                // an edit that was undone — which would otherwise be stamped on the next
+                // version saved.
+                clippings[index].editedAt = date == clippings[index].createdAt ? nil : date
             }
         } else if clippings[index].smartTitle != nil {
             clippings[index].smartTitle = nil
@@ -399,6 +405,10 @@ final class ClipboardStore {
     func restoreVersion(_ versionID: UUID, of id: UUID) {
         guard let clipping = clipping(withID: id),
               let version = clipping.versions?.first(where: { $0.id == versionID }) else { return }
+        // Settle any session still open first. Otherwise `editText` sees this clipping
+        // already being edited and skips the snapshot, so whatever was typed in the last
+        // few seconds would be replaced with no version kept of it.
+        finishEditing(id)
         editText(of: id, to: version.text)
         finishEditing(id)
         AssistiveTech.announce("Restored earlier version")

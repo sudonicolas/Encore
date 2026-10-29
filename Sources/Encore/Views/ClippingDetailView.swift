@@ -20,6 +20,10 @@ struct ClippingDetailView: View {
     /// Whether a text clipping's text can be changed here. Off for Recently Deleted.
     var isEditable = true
 
+    /// Past this many bytes the metadata bar stops counting characters and lines exactly
+    /// (see `metadataItems`).
+    private static let exactCountLimit = 500_000
+
     @Environment(ClipboardStore.self) private var store
     @State private var showsVersions = false
     /// The text the lookups work on: it trails what's typed, so a lookup isn't sent for
@@ -167,8 +171,10 @@ struct ClippingDetailView: View {
                 }
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(metadataItems.map(Optional.some).accessibilityJoined)
+        // .contain, not .ignore: the Version History button sits in this bar now, and
+        // ignoring the children would take it away from VoiceOver and Voice Control
+        // altogether. The text describes itself just above instead.
+        .accessibilityElement(children: .contain)
         .scaledFont(.caption)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -185,9 +191,17 @@ struct ClippingDetailView: View {
         switch clipping.kind {
         case .text:
             let text = clipping.text ?? ""
-            items.append(text.count == 1 ? "1 character" : "\(text.count.formatted()) characters")
-            let lines = text.split(whereSeparator: \.isNewline).count
-            if lines > 1 { items.append("\(lines.formatted()) lines") }
+            // Counting graphemes and splitting lines both walk the whole string, and this
+            // bar is rebuilt on every keystroke now that the text is editable here. Past
+            // the size where the preview also stops working character by character, the
+            // byte count stands in.
+            if text.utf8.count > Self.exactCountLimit {
+                items.append("\(text.utf8.count.formatted()) bytes")
+            } else {
+                items.append(text.count == 1 ? "1 character" : "\(text.count.formatted()) characters")
+                let lines = text.split(whereSeparator: \.isNewline).count
+                if lines > 1 { items.append("\(lines.formatted()) lines") }
+            }
         case .image:
             if let label = clipping.text { items.append(label) }
         case .fileURL:
