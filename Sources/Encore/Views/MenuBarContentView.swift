@@ -29,6 +29,7 @@ struct MenuBarContentView: View {
     @FocusState private var isSearchFocused: Bool
 
     private let navigator = AppNavigator.shared
+    private let preview = ClippingPreviewController.shared
 
     enum Page: Equatable {
         case list
@@ -99,8 +100,11 @@ struct MenuBarContentView: View {
                 go(to: .list)
             }
             if highlighted == nil { highlightedID = nil }
+            preview.validate(against: clippings)
         }
         .onChange(of: searchText) { _, newValue in
+            // The rows below the pointer are about to change.
+            preview.dismiss()
             // While searching, the top match is ready to copy with Return.
             highlightedID = newValue.isEmpty ? nil : visibleClippings.first?.id
             announceSearchResults()
@@ -113,8 +117,10 @@ struct MenuBarContentView: View {
             highlightedID = nil
             copiedID = nil
             runner.dismiss()
+            preview.dismiss()
             isSearchFocused = true
         }
+        .onDisappear { preview.dismiss() }
     }
 
     // MARK: - List page
@@ -294,7 +300,14 @@ struct MenuBarContentView: View {
                 isCopied: clipping.id == copiedID,
                 quickCopyKey: Self.quickCopyLabel(forSlot: offset + index),
                 onCopy: copy,
-                onOpen: openDetail
+                onOpen: openDetail,
+                onHoverChange: { hovering in
+                    if hovering {
+                        preview.pointerEntered(clipping, query: searchText)
+                    } else {
+                        preview.pointerExited(clipping.id)
+                    }
+                }
             )
             .id(clipping.id)
             .motionSafeTransition(.opacity.combined(with: .move(edge: .leading)))
@@ -495,6 +508,7 @@ struct MenuBarContentView: View {
             return .ignored
         }
         highlightedID = items[next].id
+        preview.present(items[next], query: searchText)
         // VoiceOver stays in the search field, so say which clipping is now chosen, as
         // Spotlight does.
         let clipping = items[next]
@@ -580,6 +594,7 @@ struct MenuBarContentView: View {
     private func go(to newPage: Page) {
         selectedText = nil
         runner.dismiss()
+        preview.dismiss()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86).motionSafe) {
             page = newPage
         }

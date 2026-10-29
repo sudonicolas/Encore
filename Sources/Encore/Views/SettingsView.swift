@@ -47,6 +47,7 @@ struct GeneralSettingsView: View {
                         Text("\($0)").tag($0)
                     }
                 }
+                Toggle("Preview on hover", isOn: $store.showsHoverPreview)
             }
 
             Section {
@@ -81,7 +82,7 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
-        .frame(width: settingsWidth, height: accessNote == nil ? 548 : 598)
+        .frame(width: settingsWidth, height: accessNote == nil ? 584 : 634)
         .onAppear {
             store.refreshLaunchAtLoginStatus()
             ClipboardMonitor.shared.refreshAccessStatus()

@@ -27,6 +27,8 @@ struct ClippingRowView: View {
     var onCopy: (Clipping) -> Void
     /// Called with the clipping's id when the detail chevron is clicked.
     var onOpen: (UUID) -> Void
+    /// Called when the pointer enters or leaves the row.
+    var onHoverChange: (Bool) -> Void = { _ in }
 
     @Environment(ClipboardStore.self) private var store
     @Environment(\.undoManager) private var undoManager
@@ -94,10 +96,14 @@ struct ClippingRowView: View {
         .contentShape(.row)
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
+            onHoverChange(hovering)
         }
         // A row that goes away or is reused never keeps a hover it can no longer end,
         // which left pin and delete icons where the Option-digit hints belong.
-        .onDisappear { isHovering = false }
+        .onDisappear {
+            isHovering = false
+            onHoverChange(false)
+        }
         .contextMenu {
             Button("Copy") { onCopy(clipping) }
             Button("Show Details") { onOpen(clipping.id) }

@@ -71,6 +71,10 @@ Free and open source. No account, no subscription, no cloud.
 - **History window.** Sidebar (All, Pinned, Text, Images, Files, Recently Deleted), list and
   detail, with search, multi-select, context menus, swipe actions and keyboard commands
   (Return copies, ⌫ deletes, ⌘C copies, ⌘Z undoes).
+- **Hover preview.** Rest the pointer on a row (or arrow down to it) and a card opens to the
+  left of the popover with the whole clipping: as much text as the screen holds, code in a
+  monospaced font, images at size, files with their folders. Long clippings fade out and say
+  how many lines there are. Turn it off in Settings → General.
 - **Edit text in place.** Open a text clipping and click into it to fix or rework it. It stays
   plain text, and Copy, search and the list use your edit straight away. ⌘Z and ⇧⌘Z undo and
   redo (Control-Z and Control-⇧Z work too). Edits aren't available in Recently Deleted.

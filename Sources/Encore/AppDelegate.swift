@@ -226,6 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        ClippingPreviewController.shared.anchorView = popover.contentViewController?.view
         // Once the new view is in its window, so it can put the cursor in the search field.
         NotificationCenter.default.post(name: .clipboardPopoverWillShow, object: nil)
         closeOnClickElsewhere()
@@ -409,10 +410,12 @@ extension AppDelegate: NSPopoverDelegate {
 
     func popoverWillClose(_ notification: Notification) {
         popoverIsClosing = true
+        ClippingPreviewController.shared.dismiss()
     }
 
     func popoverDidClose(_ notification: Notification) {
         popoverIsClosing = false
+        ClippingPreviewController.shared.anchorView = nil
         // Settle any text being edited, and let the closed view go.
         store.finishAllEditing()
         popover?.contentViewController = nil

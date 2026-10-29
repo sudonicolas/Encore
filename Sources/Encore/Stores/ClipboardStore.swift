@@ -54,6 +54,12 @@ final class ClipboardStore {
         didSet { UserDefaults.standard.set(flashesMenuBarIconOnCopy, forKey: Keys.flash) }
     }
 
+    /// Show a preview of the whole clipping beside the popover while the pointer rests
+    /// on a row, or the keyboard highlight is on it.
+    var showsHoverPreview: Bool {
+        didSet { UserDefaults.standard.set(showsHoverPreview, forKey: Keys.hoverPreview) }
+    }
+
     /// Size of clipping text in the popover and the History window.
     var textSize: TextSize {
         didSet { UserDefaults.standard.set(textSize.rawValue, forKey: Keys.textSize) }
@@ -106,6 +112,7 @@ final class ClipboardStore {
         static let onlineLookups = "offersOnlineLookups"
         static let flash = "flashesMenuBarIconOnCopy"
         static let textSize = "textSize"
+        static let hoverPreview = "showsHoverPreview"
 
         /// Settings that existed before the rename, carried over by LegacyMigration.
         static let legacy = [maxStored, maxDisplayed, recording, sound, concealed]
@@ -136,6 +143,7 @@ final class ClipboardStore {
         offersOnlineLookups = (defaults.object(forKey: Keys.onlineLookups) as? Bool) ?? true
         flashesMenuBarIconOnCopy = (defaults.object(forKey: Keys.flash) as? Bool) ?? false
         textSize = TextSize(rawValue: defaults.integer(forKey: Keys.textSize)) ?? .standard
+        showsHoverPreview = (defaults.object(forKey: Keys.hoverPreview) as? Bool) ?? true
         // The login item can be removed in System Settings behind our back, so the
         // system — not a cached default — is the source of truth.
         let status = LaunchAtLoginManager.status
