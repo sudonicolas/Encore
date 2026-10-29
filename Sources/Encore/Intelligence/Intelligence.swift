@@ -42,6 +42,17 @@ enum Intelligence {
         }
     }
 
+    /// Whether Apple Intelligence could work on this Mac at all: the OS is new enough and
+    /// the hardware supports it. When it is false every Apple Intelligence surface is left
+    /// out entirely rather than shown switched off — there is nothing the user could do
+    /// about it, so an explanation they cannot act on is just clutter.
+    static var isPossible: Bool {
+        switch status {
+        case .requiresMacOS26, .unsupported: return false
+        default: return true
+        }
+    }
+
     static var status: Status {
         guard #available(macOS 26.0, *) else { return .requiresMacOS26 }
         switch SystemLanguageModel.default.availability {
