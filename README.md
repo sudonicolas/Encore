@@ -107,8 +107,12 @@ Free and open source. No account, no subscription, no cloud.
 - **VoiceOver**: each clipping reads as one item with Copy, Pin, Show Details and Delete
   as actions; results are announced, and rotors jump to pinned clippings, images and files.
 - **Voice Control**: every button has a speakable name.
-- **Keyboard**: ⇧⌘V opens the popover from any app; ↑ and ↓ in the popover, Return to
-  copy, ⌘↓ to open a clipping.
+- **Keyboard**: ⇧⌘V opens and closes the popover from any app. In it the top clipping is
+  already highlighted, so Return copies straight away; ↑ and ↓ move the highlight, ⌘↓
+  opens a clipping (⌘↑ goes back), and ⌥⁉1 through ⌥⁉0 copy one of the first ten
+  outright. Escape steps back one layer at a time: it leaves a clipping's text, then the
+  page, then clears the search, and only then closes the popover. These work wherever the
+  cursor happens to be.
 - **Text Size** up to 200% (Settings → General, or ⌘+ and ⌘−).
 - Follows Reduce Motion, Increase Contrast and Differentiate Without Color, with colours
   that meet Apple's contrast minimums.
