@@ -253,7 +253,7 @@ struct MenuBarContentView: View {
 
     private var list: some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            ScrollView(.vertical) {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     if !pinned.isEmpty {
                         sectionHeader("Pinned")

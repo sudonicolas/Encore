@@ -20,7 +20,7 @@ struct RecentlyDeletedPage: View {
                     Text("Deleted clippings stay here for \(ClipboardStore.recentlyDeletedRetentionDays) days.")
                 }
             } else {
-                ScrollView {
+                ScrollView(.vertical) {
                     LazyVStack(spacing: 1) {
                         ForEach(store.deletedClippings) { clipping in
                             DeletedClippingRow(clipping: clipping)
