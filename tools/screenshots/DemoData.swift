@@ -271,12 +271,12 @@ private struct DemoArtwork: View {
     }
 }
 
-/// A colour palette swatch: Encore's own — clay, sand, paper, lavender and blue.
+/// A colour palette swatch: Encore's own — bordeaux, blush, cream, lavender and blue.
 private struct DemoPalette: View {
     private let colors: [Color] = [
-        Color(red: 0.70, green: 0.46, blue: 0.36),
-        Color(red: 0.85, green: 0.71, blue: 0.61),
-        Color(red: 0.95, green: 0.90, blue: 0.83),
+        Color(red: 0.36, green: 0.08, blue: 0.15),
+        Color(red: 0.82, green: 0.65, blue: 0.67),
+        Color(red: 0.97, green: 0.95, blue: 0.91),
         Color(red: 0.77, green: 0.71, blue: 0.90),
         Color(red: 0.29, green: 0.58, blue: 0.92),
     ]

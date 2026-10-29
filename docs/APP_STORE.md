@@ -46,9 +46,19 @@ tied to your account). For example: `~/Developer/Profiles/Encore_App_Store.provi
 [App Store Connect](https://appstoreconnect.apple.com/apps) → **+** → **New App**.
 
 - Platform: **macOS**
-- Name: **Encore**. Store names must be unique, so if it's taken, try something like
-  *Encore Clipboard* or *Encore – Clipboard History*. This only changes the listing; the
-  app can still be called Encore on the Mac.
+- Name: **Encore: copy history**. This is the listing only. `CFBundleDisplayName` stays
+  **Encore**, so the menu bar, the Dock and *Quit Encore* are unchanged — a colon is not
+  a legal character in a macOS file name (Finder shows it as `/`), and Apple expects the
+  installed name to be the short one.
+
+  > **Keep Apple's trademarks out of the name.** Guideline 5.2.5 forbids app names that
+  > use Apple's marks — *Mac*, *macOS*, *iPhone*, *Apple* and the rest — even
+  > descriptively, and version 1.2.0 (4) was rejected for exactly this. "Encore for Mac",
+  > "Encore — Mac Clipboard" and "Encore Mac Clipboard Manager" are all out. *Encore:
+  > copy history* says the same thing with words Apple does not own; the platform is
+  > already shown by the store. The same applies to the subtitle, keywords and
+  > promotional text, and to imagery: see [`COLOR.md`](COLOR.md) on why the icon and menu
+  > bar mark are drawn rather than borrowed from SF Symbols.
 - Primary language: English (U.S.)
 - Bundle ID: `io.github.sudonicolas.encore`
 - SKU: anything unique to you, such as `encore-macos`
@@ -120,7 +130,7 @@ version's **Build** section.
 Paste this into **App Review Information → Notes**. Menu bar apps are often rejected
 when reviewers can't find them:
 
-> Encore is a menu bar app with no Dock icon. After launch, click the stacked-cards icon
+> Encore is a menu bar app with no Dock icon. After launch, click the Encore icon (a circular "e" with an arrow)
 > in the menu bar to open the clipboard history. Copy some text in any app and it appears
 > in the list; click a row to copy it back.
 >
@@ -156,7 +166,7 @@ Information → Notes** (Apple asks for both, so it's on file for later submissi
 >    students and knowledge workers who want their clipboard history available without an
 >    account or cloud sync.
 >
-> 3. No login or setup is required. After launch, click the stacked-cards icon in the menu
+> 3. No login or setup is required. After launch, click the Encore icon (a circular "e" with an arrow) in the menu
 >    bar (there is no Dock icon) to open the clipboard history. Copy any text, image or file
 >    and it appears at the top of the list; click a row to copy it back to the pasteboard.
 >    macOS will ask whether Encore can paste from other apps — choose Allow (System Settings
@@ -242,6 +252,9 @@ These are the review guidelines Mac apps most often fail, and how Encore meets e
 - **5.1.1 Privacy:** privacy policy linked, no data collected, privacy manifest included.
 - **5.1.2 Data use:** clipboard contents never leave the Mac except the explicit lookups
   above.
+- **5.2.5 Apple's trademarks and designs:** no Apple mark in the app name, subtitle or
+  keywords (see the naming note above), and the icon and menu bar glyph are Encore's own
+  drawing rather than a system symbol or a stack of Apple-style document sheets.
 
 ## Open source and the store
 

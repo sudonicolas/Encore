@@ -342,7 +342,7 @@ struct DesktopPanel: View {
                     .fill(.black.opacity(0.1))
                     .frame(width: item.width, height: item.height)
                     .position(x: item.midX - Self.inset, y: MenuBar.height / 2)
-                symbol("rectangle.stack", x: item.midX)
+                EncoreMark().position(x: item.midX - Self.inset, y: MenuBar.height / 2)
                 symbol("battery.100percent", x: item.midX + 54, size: 17)
                 symbol("wifi", x: item.midX + 96)
                 symbol("magnifyingglass", x: item.midX + 132)

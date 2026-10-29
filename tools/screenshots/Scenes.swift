@@ -481,7 +481,7 @@ struct MenuBar: View {
                 .fill(.black.opacity(0.1))
                 .frame(width: Self.encoreItem.width, height: Self.encoreItem.height)
                 .offset(x: Self.encoreItem.minX, y: Self.encoreItem.minY)
-            item("rectangle.stack", x: Self.encoreItem.midX)
+            EncoreMark().position(x: Self.encoreItem.midX, y: Self.height / 2)
             item("battery.100percent", x: 1134, size: 17)
             item("wifi", x: 1176)
             item("magnifyingglass", x: 1212)
@@ -500,6 +500,50 @@ struct MenuBar: View {
             .font(.system(size: size, weight: .medium))
             .foregroundStyle(.black)
             .position(x: x, y: Self.height / 2)
+    }
+}
+
+/// Encore's menu bar mark, drawn to match the app's custom SF Symbol (`encore.mark`) at
+/// its Regular weight: a circular "e" whose lower arc ends in a right-angle arrowhead.
+/// Redrawn here because the screenshot tool renders its own menu bar rather than loading
+/// Encore's asset catalog. The geometry is `geometry()` in tools/make-mark.py.
+struct EncoreMark: View {
+    /// Ink box at this point size, matched to a system glyph beside it.
+    var points: CGFloat = 14.5
+
+    var body: some View {
+        let box = points * 1.04
+        let ro = box / 2, w = box * 0.0875, r = ro - w / 2, h = w / 2
+        let c = 0.5.squareRoot()
+        let arc = r * c
+        let ty = min(max(2 * w, 2 * arc + h - ro), arc)
+        let tx = 2 * arc - ty
+        let leg = ro - ty
+        let xo = (ro * ro - h * h).squareRoot()
+        Canvas { context, size in
+            func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint { .init(x: size.width / 2 + x, y: size.height / 2 + y) }
+            // Angles run clockwise on screen from 3 o'clock, so 90° is straight down.
+            func arcPoints(from: Double, to: Double) -> [CGPoint] {
+                let steps = 90
+                return (0...steps).map { i in
+                    let a = (from + (to - from) * Double(i) / Double(steps)) * .pi / 180
+                    return at(r * cos(a), r * sin(a))
+                }
+            }
+            var ring = Path()
+            ring.addLines(arcPoints(from: 180, to: 360))
+            var lower = Path()
+            lower.addLines(arcPoints(from: 180, to: 45))
+            lower.addLine(to: at(tx, ty))
+            var head = Path()
+            head.move(to: at(tx - leg, ty))
+            head.addLine(to: at(tx, ty))
+            head.addLine(to: at(tx, ty + leg))
+            let style = StrokeStyle(lineWidth: w, lineCap: .butt, lineJoin: .miter)
+            for path in [ring, lower, head] { context.stroke(path, with: .color(.black), style: style) }
+            context.fill(Path(CGRect(x: at(-r, -h).x, y: at(0, -h).y, width: xo + r, height: w)), with: .color(.black))
+        }
+        .frame(width: box, height: box)
     }
 }
 

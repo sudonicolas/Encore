@@ -9,44 +9,75 @@ Encore's colour follows three rules:
 2. **One accent, used for one thing.** The only colour Encore adds is the *sparkle*,
    Apple blue fading into a muted pastel lavender. It marks what Apple Intelligence
    wrote (smart titles, writing-tools results) and nothing else, so it keeps its meaning.
-3. **Earth underneath.** The brand's ground (the app icon's field and the App Store
-   backdrops) is warm, sun-baked earth: sand deepening to clay. It never shows inside
-   the app's UI.
+3. **One ground, outside the app.** The icon's field is bordeaux: a deep, desaturated
+   red, lighter at the top and darker at the bottom. The App Store backdrops are
+   warm, sun-baked earth: sand deepening to clay. Neither ever shows inside the app's UI.
 
 ## Why these colours
 
-- **Complementary temperature, low saturation.** Clay and sand (OKLCH hue about 45–78°)
-  sit opposite blue and lavender (about 255–300°) on the colour wheel. Placing
-  complements side by side makes each look more vivid (simultaneous contrast), so the
-  "Apple Intelligence" accent stands out on the App Store's sand without needing much
-  saturation. That keeps the palette calm.
+- **Complementary temperature, low saturation.** Bordeaux, clay and sand (OKLCH hue
+  about 20–78°) sit opposite blue and lavender (about 255–300°) on the colour wheel.
+  Placing complements side by side makes each look more vivid (simultaneous contrast),
+  so the "Apple Intelligence" accent stands out on the App Store's sand without needing
+  much saturation. That keeps the palette calm.
 - **Chroma is kept low.** The previous indigo field ran at OKLCH chroma 0.19–0.23, close
   to the most saturated violet sRGB can show. The new field is 0.03–0.09, and the accent
   0.07–0.17, at its bluest where it needs to read as Apple blue. Research on emotional
   response to colour (Valdez & Mehrabian, 1994) links saturation with arousal and
   lightness with pleasantness. Light, low-chroma earth tones read as warm and relaxed
   rather than loud.
-- **Warm neutrals feel analogue.** Sand, clay and umber recall paper, pottery and wood:
-  fitting for an app about things you keep.
+- **Warm neutrals feel analogue.** Bordeaux, sand, clay and umber recall leather
+  bindings, paper, pottery and wood: fitting for an app about things you keep.
 - **Blue and lavender say "intelligence" the way macOS does.** Apple Intelligence's own
   glow runs through blue and purple, so the sparkle is recognisable without imitating it.
 
-## The icon
+## The mark
 
-A stack of clippings: the newest in front, earlier ones stepping back behind it, each a
-little narrower. That's all a clipboard history is, and all the icon needs to say.
+A circular **e**, cream on bordeaux. Its crossbar runs through the centre of the circle,
+and its lower arc runs on past the bowl into a right-angle arrowhead: **e** for Encore, and
+the arrow of a copy coming back round, an encore. One shape, two readings, and nothing
+else in it.
 
+It is built from the circle, so every part lines up with every other:
+
+- **True circle.** The ring is a real circle (no oval, no optical bulge), centred on the
+  icon's centre, with the crossbar through its middle.
+- **Arrowhead from the arc.** The lower arc runs to 45° and carries on straight along its
+  own tangent, so the join is seamless and the arrow points exactly up and to the right.
+  The head is a right angle with one horizontal and one vertical leg of equal length.
+- **A square ink box.** The vertical leg ends flush with the bottom of the circle and the
+  arrow's right edge stays inside the ring's, so the mark's ink box is an exact square.
+- **One stroke of air.** The gap between the crossbar and the arrow's horizontal leg is the
+  same thickness as the stroke. At the heaviest menu bar weights the arrow can only clear
+  the crossbar.
+
+The icon and the menu bar symbols are generated from that one geometry by
+`tools/make-mark.py`, so they cannot drift apart.
+
+- **Drawn, not borrowed.** The previous icons were a stack of document cards and, before
+  this, a letter E. The menu bar glyph was SF Symbols' `rectangle.stack`. Stacked sheets
+  are Apple's own vocabulary (`doc.on.doc` is Apple's clipboard in Spotlight), and a system
+  symbol is by definition not a logo. A letterform is outside that vocabulary entirely —
+  Apple ships no letter icons — so there is nothing for it to be confused with. See
+  [`APP_STORE.md`](APP_STORE.md) on guideline 5.2.5.
 - **No sparkle.** Sparkles are everywhere now. The Apple Intelligence features are
   something Encore does, not what it is.
-- **Three lines of text** on the front card are the one detail that says "things you
-  copied" rather than just "cards". They're still readable at 32 px.
-- **The same shape everywhere.** The menu bar glyph is SF Symbols' `rectangle.stack`,
-  the icon's silhouette in outline. When a copy is recorded it flashes to
-  `checkmark.rectangle.stack.fill`. Apple's own clipboard (in Spotlight) is two sheets
-  offset diagonally (`doc.on.doc`); a vertical stack reads as history instead.
-- **Unique by material, not ornament.** Liquid Glass cards on a clay field. Very few
-  icons on the Mac are terracotta, so it's easy to spot in the Dock, Launchpad and the
-  App Store.
+- **The same shape everywhere.** The menu bar glyph is Encore's own SF Symbol,
+  `encore.mark` in `Resources/Assets.xcassets`, built from the template SF Symbols
+  exports and compiled into the app's `Assets.car` alongside the icon. It is the icon's
+  mark redrawn as outlines at SF Symbols' stroke weights and optical size (ink 15 × 15 pt
+  at 14 pt, in family with `rectangle.stack` at 14.88 × 16 and `square.and.arrow.down` at
+  12.88 × 14.62), so it sits beside system glyphs rather than shouting over them. All nine
+  weight/scale variants are generated, so it tracks the user's menu bar text weight like
+  any system symbol. When a copy is recorded it flashes to `encore.mark.fill`, a heavier
+  form — the menu bar briefly showing the app icon's own mark.
+- **Flat, like ink.** The mark is not Liquid Glass: it is drawn in solid cream, so it
+  reads as a printed letter on a bordeaux binding rather than a lit object, and holds its
+  shape at any size.
+- **Legible small.** The counters are a full stroke wide, so the bowl and the arrow stay
+  open at 32 px in Launchpad and at 16 pt in the menu bar.
+- **Unique by colour.** Cream on bordeaux. Almost nothing on the Mac is deep red, so it's
+  easy to pick out in the Dock, Launchpad and the App Store.
 
 ## Palette
 
@@ -73,8 +104,9 @@ Mode until they're readable. They're unchanged by this redesign. See
 
 | Role | Colour |
 |---|---|
-| Icon field | clay `#D4AF90` → terracotta `#B1765B` |
-| Icon card text lines | umber `#6D4D3E` at 40% |
+| Icon field | bordeaux `#6E1C2D` → deep bordeaux `#501120` (Display P3) |
+| Icon mark | cream `#F8F3EA`, flat (no glass), neutral shadow |
+| Icon mark geometry | circle of ink radius 280 centred on 1024, stroke 60 (21%) |
 | Backdrop field | sand `#F2E6D4` → clay `#DAB69B`, soft lavender glow |
 | Backdrop ripple | umber-terracotta `#805138` (`rippleShadow`), white highlight |
 | Backdrop headline | ink `#3A2A20` |
@@ -91,7 +123,7 @@ only the field's own two colours do.
 
 Four of the five portrait slides (hero, writing tools, lookups, privacy) put light UI on a
 **night** ground instead, so the sand desktop and Settings window pop against it. Night is
-neutral grey on purpose: no brown, no ripple, no glow, so the clay icon and the desktop
+neutral grey on purpose: no brown, no ripple, no glow, so the bordeaux icon and the desktop
 are the only warm things on the slide. The smart-titles slide stays on sand, since its
 History window is already dark.
 

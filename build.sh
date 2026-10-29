@@ -17,6 +17,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_BUNDLE="$ROOT_DIR/build/$APP_NAME.app"
 PKG_PATH="$ROOT_DIR/build/$APP_NAME.pkg"
 ICON_SOURCE="$ROOT_DIR/Resources/AppIcon.icon"
+ASSET_SOURCE="$ROOT_DIR/Resources/Assets.xcassets"
 ENTITLEMENTS="$ROOT_DIR/$APP_NAME.entitlements"
 INFO_PLIST="$ROOT_DIR/Info.plist"
 
@@ -86,11 +87,12 @@ cp "$ROOT_DIR/Resources/container-migration.plist" "$APP_BUNDLE/Contents/Resourc
 
 # The icon is an Icon Composer document (layered Liquid Glass artwork). actool compiles
 # it into Assets.car — which macOS renders live in light, dark, clear and tinted
-# appearances — plus an AppIcon.icns fallback.
-echo "==> Compiling app icon..."
+# appearances — plus an AppIcon.icns fallback. The same Assets.car carries Encore's
+# custom SF Symbols (the menu bar mark) from Resources/Assets.xcassets.
+echo "==> Compiling app icon and symbols..."
 PARTIAL_PLIST="$(mktemp -t encore-icon)"
 ACTOOL_STATUS=0
-ACTOOL_OUTPUT="$(xcrun actool "$ICON_SOURCE" \
+ACTOOL_OUTPUT="$(xcrun actool "$ICON_SOURCE" "$ASSET_SOURCE" \
     --compile "$APP_BUNDLE/Contents/Resources" \
     --platform macosx \
     --minimum-deployment-target 26.0 \

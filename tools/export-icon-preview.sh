@@ -11,5 +11,6 @@ ICTOOL="$(xcode-select -p)/../Applications/Icon Composer.app/Contents/Executable
     --output-file "$ROOT_DIR/docs/icon.png" \
     --platform macOS \
     --rendition Default \
+    --design-generation 27 \
     --width 512 --height 512 --scale 1 > /dev/null
 echo "Wrote docs/icon.png"

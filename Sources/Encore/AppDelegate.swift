@@ -82,9 +82,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
         let recording = store.isRecordingEnabled
-        // The app icon's silhouette — a stack of clippings, newest in front — as a
-        // template symbol.
-        button.image = statusImage("rectangle.stack")
+        // The app icon's own mark, as a template symbol.
+        button.image = statusImage("encore.mark")
         button.appearsDisabled = !recording
         button.toolTip = recording ? AppInfo.name : "\(AppInfo.name) \u{2014} recording paused"
         button.setAccessibilityLabel(recording ? AppInfo.name : "\(AppInfo.name), recording paused")
@@ -105,21 +104,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ])
     }
 
+    /// Encore's custom SF Symbols, from `Resources/Assets.xcassets`: `encore.mark` is
+    /// the app icon's mark drawn at SF Symbols' own weights and optical size, so it sits
+    /// beside system glyphs in the menu bar; `encore.mark.fill` is its solid form.
     private func statusImage(_ symbol: String) -> NSImage? {
         let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: AppInfo.name)?
-            .withSymbolConfiguration(config)
+        let image = NSImage(named: symbol)?.withSymbolConfiguration(config)
         image?.isTemplate = true
         return image
     }
 
-    /// With "Flash the menu bar icon" on, swaps the icon for a checkmark for a moment
-    /// when a clipping is recorded: the visual counterpart to the copy sound. A plain
-    /// swap, not an animation, so it suits Reduce Motion too.
+    /// With "Flash the menu bar icon" on, swaps the mark for its solid form for a
+    /// moment when a clipping is recorded: the visual counterpart to the copy sound. A
+    /// plain swap, not an animation, so it suits Reduce Motion too.
     private func flashStatusIcon() {
         guard store.flashesMenuBarIconOnCopy, popover?.isShown != true, let button = statusItem?.button else { return }
         flashTask?.cancel()
-        button.image = statusImage("checkmark.rectangle.stack.fill")
+        button.image = statusImage("encore.mark.fill")
         flashTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(0.8))
             guard !Task.isCancelled else { return }

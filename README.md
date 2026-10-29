@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.png" width="160" alt="Encore app icon: a stack of glass clipping cards on clay">
+  <img src="docs/icon.png" width="160" alt="Encore app icon: the Encore mark, a cream circular e ending in an arrowhead, on bordeaux">
 </p>
 
 <h1 align="center">Encore</h1>
@@ -199,15 +199,22 @@ Sources/Encore/
   Utilities/                       App info, brand and status colours, corner radii, thumbnails,
                                    highlighting, Text Size, accessibility helpers
 Resources/AppIcon.icon             The app icon, an Icon Composer document
+Resources/Assets.xcassets          The menu bar mark, as Encore's own SF Symbols
 Resources/PrivacyInfo.xcprivacy    Privacy manifest (no tracking, no data collected)
 Resources/container-migration.plist  Moves pre-sandbox data into the container
 Encore.entitlements                App Sandbox entitlements
 tools/export-icon-preview.sh       Renders the icon to docs/icon.png
+tools/make-mark.py                 Draws the mark: icon artwork and menu bar symbols
 ```
 
-The icon is a layered Liquid Glass design. Open `Resources/AppIcon.icon` in Icon Composer
-(bundled with Xcode) to edit it; macOS renders it live in light, dark, clear and tinted
-appearances.
+The icon is the Encore mark — a true circular "e" whose lower arc runs on into a right-angle
+arrowhead — in cream on bordeaux. It is built from the circle, so the crossbar, the arrow and the
+gap between them all share one stroke and the ink box is an exact square.
+Open `Resources/AppIcon.icon` in Icon Composer (bundled with Xcode) to edit it; macOS
+renders it live in light, dark, clear and tinted appearances (the mark is flat, not glass). The menu bar uses the same
+mark as Encore's own SF Symbol (`encore.mark`, and `encore.mark.fill` for the copy flash).
+Both the icon artwork and the symbols come from `tools/make-mark.py`, and the symbols are
+compiled into the app's `Assets.car` beside the icon. See [`docs/COLOR.md`](docs/COLOR.md).
 
 ## Notes
 

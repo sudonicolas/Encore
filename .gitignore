@@ -35,3 +35,6 @@ AuthKey_*.p8
 # Private working docs: App Store listing drafts and the accessibility plan
 docs/app-store/listing.md
 docs/ACCESSIBILITY.md
+
+# Local assistant instructions: never push
+CLAUDE.md
