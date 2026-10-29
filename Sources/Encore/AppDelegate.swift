@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        store.finishAllEditing()
         ClipboardMonitor.shared.stop()
         GlobalHotKeyManager.shared.stop()
     }
@@ -190,16 +191,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Popover
 
     private func configurePopover() {
-        let content = MenuBarContentView().environment(store)
         let newPopover = NSPopover()
         newPopover.behavior = .transient
         newPopover.animates = true
-        // The content sets its own size, which grows with the Text Size setting.
-        let hosting = NSHostingController(rootView: content)
-        hosting.sizingOptions = [.preferredContentSize]
-        newPopover.contentViewController = hosting
         newPopover.delegate = self
         popover = newPopover
+    }
+
+    /// A fresh SwiftUI view for every open. Every open starts from the list anyway, and
+    /// a view that lives for weeks can end up wedged — buttons that no longer respond,
+    /// hover states stuck on rows — until the app is quit. This way nothing outlives a
+    /// single use of the popover.
+    private func makePopoverContent() -> NSViewController {
+        // The content sets its own size, which grows with the Text Size setting.
+        let hosting = NSHostingController(rootView: MenuBarContentView().environment(store))
+        hosting.sizingOptions = [.preferredContentSize]
+        return hosting
     }
 
     private func showPopover() {
@@ -209,7 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard let popover, let button = statusItem?.button, !popover.isShown else { return }
-        NotificationCenter.default.post(name: .clipboardPopoverWillShow, object: nil)
+        popover.contentViewController = makePopoverContent()
         ClipboardMonitor.shared.refreshAccessStatus()
         // Apple Intelligence may have finished downloading since launch.
         SmartTitler.shared.processBacklog()
@@ -219,6 +226,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        // Once the new view is in its window, so it can put the cursor in the search field.
+        NotificationCenter.default.post(name: .clipboardPopoverWillShow, object: nil)
         closeOnClickElsewhere()
     }
 
@@ -404,6 +413,9 @@ extension AppDelegate: NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         popoverIsClosing = false
+        // Settle any text being edited, and let the closed view go.
+        store.finishAllEditing()
+        popover?.contentViewController = nil
         if let outsideClickMonitor {
             NSEvent.removeMonitor(outsideClickMonitor)
             self.outsideClickMonitor = nil

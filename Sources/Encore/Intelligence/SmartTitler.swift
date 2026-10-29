@@ -53,6 +53,12 @@ final class SmartTitler {
         startIfNeeded()
     }
 
+    /// Titles a clipping again after its text was edited, which the old title no longer fits.
+    func retitle(_ id: UUID) {
+        attempted.remove(id)
+        enqueue(id)
+    }
+
     /// Queues every clipping still waiting for a title — at launch, when titles are turned
     /// on, and whenever the popover opens (the model may have finished downloading since).
     func processBacklog() {

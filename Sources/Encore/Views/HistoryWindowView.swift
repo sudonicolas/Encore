@@ -514,7 +514,8 @@ private struct HistoryDetail: View {
             clipping: clipping,
             runner: isDeleted ? nil : runner,
             searchQuery: searchQuery,
-            selectedText: $selectedText
+            selectedText: $selectedText,
+            isEditable: !isDeleted
         )
             .navigationTitle(clipping.sourceAppName ?? clipping.kindTitle)
             .toolbar {

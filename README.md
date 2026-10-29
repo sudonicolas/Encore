@@ -71,6 +71,13 @@ Free and open source. No account, no subscription, no cloud.
 - **History window.** Sidebar (All, Pinned, Text, Images, Files, Recently Deleted), list and
   detail, with search, multi-select, context menus, swipe actions and keyboard commands
   (Return copies, ⌫ deletes, ⌘C copies, ⌘Z undoes).
+- **Edit text in place.** Open a text clipping and click into it to fix or rework it. It stays
+  plain text, and Copy, search and the list use your edit straight away. ⌘Z and ⇧⌘Z undo and
+  redo (Control-Z and Control-⇧Z work too). Edits aren't available in Recently Deleted.
+- **Version history.** Each editing session keeps the text it replaced, up to 50 versions per
+  clipping. Once a clipping has been edited, a *versions* button in its bottom bar lists
+  them, and *Restore* brings one back. The text it replaces is kept as a version too, so a
+  restore can always be walked back.
 - **Pin** what you reuse. Pinned clippings stay at the top and are never trimmed.
 - **Recently Deleted.** Deleting is always recoverable for 30 days, with Undo right away.
 - **No duplicates.** Copying something that's already in history moves it to the top.

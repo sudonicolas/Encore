@@ -159,6 +159,8 @@ final class ClipboardStore {
             let existing = clippings.remove(at: index)
             clipping.isPinned = existing.isPinned
             clipping.smartTitle = existing.smartTitle
+            clipping.versions = existing.versions
+            clipping.editedAt = existing.editedAt
             clipping.imageData = clipping.imageData ?? existing.imageData
         }
         clippings.insert(clipping, at: 0)
@@ -309,6 +311,107 @@ final class ClipboardStore {
         clippings[index].isPinned.toggle()
         saveClippings()
         AssistiveTech.announce(clippings[index].isPinned ? "Pinned" : "Unpinned")
+    }
+
+    // MARK: - Editing
+
+    /// Most earlier versions kept per clipping. The original is always one of them.
+    static let maxVersions = 50
+    /// Seconds without a keystroke after which an editing session ends, so a long edit
+    /// leaves a version for each burst of typing, not one for the whole afternoon.
+    private static let editIdleSeconds = 8.0
+
+    /// Clippings with an editing session open: their pre-edit text is already saved as a
+    /// version, and the next edit joins the same session.
+    private var editingIDs: Set<UUID> = []
+    private var idleTasks: [UUID: Task<Void, Never>] = [:]
+    private var saveTask: Task<Void, Never>?
+
+    /// Sets a text clipping's text as the user types. The first edit of a session saves
+    /// the text it replaces as a version (so nothing is lost even if Encore quits
+    /// mid-edit); the rest of the session only updates the live text, which Copy, search
+    /// and the list read straight away. Typing-level undo is the editor's own.
+    func editText(of id: UUID, to newText: String) {
+        guard let index = clippings.firstIndex(where: { $0.id == id }),
+              clippings[index].kind == .text,
+              clippings[index].text != newText else { return }
+        if !editingIDs.contains(id) {
+            editingIDs.insert(id)
+            var versions = clippings[index].versions ?? []
+            versions.append(TextVersion(
+                text: clippings[index].text ?? "",
+                date: clippings[index].editedAt ?? clippings[index].createdAt
+            ))
+            if versions.count > Self.maxVersions {
+                // Keep the original and the newest; drop the oldest in between.
+                versions.remove(at: 1)
+            }
+            clippings[index].versions = versions
+        }
+        clippings[index].text = newText
+        clippings[index].editedAt = Date()
+        scheduleSave()
+
+        idleTasks[id]?.cancel()
+        idleTasks[id] = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.editIdleSeconds))
+            guard !Task.isCancelled else { return }
+            self?.finishEditing(id)
+        }
+    }
+
+    /// Ends an editing session: the version it saved is dropped if the text ended up
+    /// where it started (typed, then undone), and a title written for the old text is
+    /// replaced.
+    func finishEditing(_ id: UUID) {
+        idleTasks[id]?.cancel()
+        idleTasks[id] = nil
+        guard editingIDs.remove(id) != nil,
+              let index = clippings.firstIndex(where: { $0.id == id }) else { return }
+        if clippings[index].versions?.last?.text == clippings[index].text {
+            clippings[index].versions?.removeLast()
+            if clippings[index].versions?.isEmpty == true {
+                clippings[index].versions = nil
+                clippings[index].editedAt = nil
+            }
+        } else if clippings[index].smartTitle != nil {
+            clippings[index].smartTitle = nil
+            SmartTitler.shared.retitle(id)
+        }
+        flushPendingSaves(force: true)
+    }
+
+    func finishAllEditing() {
+        for id in editingIDs { finishEditing(id) }
+        flushPendingSaves()
+    }
+
+    /// Makes an earlier version the clipping's text again. The text it replaces becomes
+    /// a version of its own, so a restore can always be walked back.
+    func restoreVersion(_ versionID: UUID, of id: UUID) {
+        guard let clipping = clipping(withID: id),
+              let version = clipping.versions?.first(where: { $0.id == versionID }) else { return }
+        editText(of: id, to: version.text)
+        finishEditing(id)
+        AssistiveTech.announce("Restored earlier version")
+    }
+
+    /// Saving the whole history on every keystroke would be wasteful: wait for a pause.
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(0.5))
+            guard !Task.isCancelled else { return }
+            self?.flushPendingSaves(force: true)
+        }
+    }
+
+    /// Writes any save that is still waiting for its pause (at quit, say).
+    func flushPendingSaves(force: Bool = false) {
+        guard saveTask != nil || force else { return }
+        saveTask?.cancel()
+        saveTask = nil
+        saveClippings()
     }
 
     // MARK: - Text size
