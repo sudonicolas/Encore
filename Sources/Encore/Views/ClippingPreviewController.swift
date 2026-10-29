@@ -146,7 +146,12 @@ final class ClippingPreviewController {
 
         hideGeneration += 1
         if panel.isVisible {
-            panel.alphaValue = 1
+            // A plain assignment would not stop a fade-out still running from a hover-out
+            // a moment ago, which would carry on to zero and leave the card invisible.
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                panel.animator().alphaValue = 1
+            }
         } else {
             panel.alphaValue = animates ? 0 : 1
             panel.level = window.level
@@ -172,7 +177,7 @@ final class ClippingPreviewController {
 
     private func ensurePanel() -> NSPanel {
         if let panel { return panel }
-        let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        let panel = PreviewPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -194,6 +199,15 @@ final class ClippingPreviewController {
         self.panel = panel
         self.hosting = hosting
         return panel
+    }
+
+    /// A card that cannot take the keyboard. Without this the panel, ordered above the
+    /// popover as its child, could become the key window — and then Return, Escape and
+    /// even plain typing went to a window with nothing to receive them, so the popover
+    /// appeared to stop responding while a preview was up.
+    private final class PreviewPanel: NSPanel {
+        override var canBecomeKey: Bool { false }
+        override var canBecomeMain: Bool { false }
     }
 
     // MARK: - Placement

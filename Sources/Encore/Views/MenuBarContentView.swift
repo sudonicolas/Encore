@@ -99,14 +99,16 @@ struct MenuBarContentView: View {
             if case .detail(let id) = page, !clippings.contains(where: { $0.id == id }) {
                 go(to: .list)
             }
-            if highlighted == nil { highlightedID = nil }
+            // A highlight on a clipping that is gone falls back to the top row, so
+            // Return always has something to copy.
+            if highlighted == nil { highlightedID = clippings.isEmpty ? nil : visibleClippings.first?.id }
             preview.validate(against: clippings)
         }
         .onChange(of: searchText) { _, newValue in
             // The rows below the pointer are about to change.
             preview.dismiss()
             // While searching, the top match is ready to copy with Return.
-            highlightedID = newValue.isEmpty ? nil : visibleClippings.first?.id
+            highlightedID = visibleClippings.first?.id
             announceSearchResults()
         }
         .onReceive(NotificationCenter.default.publisher(for: .clipboardPopoverWillShow)) { _ in
@@ -118,8 +120,13 @@ struct MenuBarContentView: View {
             copiedID = nil
             runner.dismiss()
             preview.dismiss()
+            // Return copies straight away, with no arrowing first.
+            highlightedID = visibleClippings.first?.id
             isSearchFocused = true
         }
+        // Every popover key is handled here, at the window, not on the search field:
+        // see PopoverKeyHandler.
+        .background(PopoverKeyHandler(handle: handleKey))
         .onDisappear { preview.dismiss() }
     }
 
@@ -168,21 +175,6 @@ struct MenuBarContentView: View {
                 .focused($isSearchFocused)
                 .accessibilityLabel("Search Clippings")
                 .help("Search clippings. Use \u{2191} and \u{2193} to choose one, Return to copy it, \u{2318}\u{2193} to show its details, and \u{2325}1 through \u{2325}0 to copy one of the first ten. Escape clears the search, then closes.")
-                .onSubmit(copyHighlighted)
-                .onKeyPress(.downArrow, phases: [.down, .repeat]) { press in
-                    press.modifiers.contains(.command) ? openHighlighted() : moveHighlight(by: 1)
-                }
-                .onKeyPress(.upArrow, phases: [.down, .repeat]) { press in
-                    press.modifiers.contains(.command) ? .ignored : moveHighlight(by: -1)
-                }
-                .onKeyPress(.escape) { handleEscape() }
-                // Option+digit copies one of the first ten rows outright, matching the
-                // number shown on each (see copyQuickSlot). Plain digits still type into
-                // the search field: only bare Option, not Option+Command or the like,
-                // triggers it, and .ignored below falls back to normal text insertion.
-                .onKeyPress(keys: Self.quickCopyKeys, phases: .down) { press in
-                    press.modifiers.contains(.option) ? copyQuickSlot(matching: press.key) : .ignored
-                }
             if !searchText.isEmpty {
                 Button {
                     withAnimation(.snappy(duration: 0.2).motionSafe) { searchText = "" }
@@ -485,10 +477,6 @@ struct MenuBarContentView: View {
 
     // MARK: - Keyboard
 
-    /// The digit keys Option+quick-copy watches for: 1 through 9, then 0 for the tenth
-    /// row — the same order shown on the rows themselves.
-    private static let quickCopyKeys = Set("1234567890".map { KeyEquivalent($0) })
-
     /// The badge shown on a row at this position in `visibleClippings` (0-based): "1"
     /// through "9", then "0" for the tenth row; nothing beyond that.
     private static func quickCopyLabel(forSlot slot: Int) -> String? {
@@ -496,16 +484,16 @@ struct MenuBarContentView: View {
         return slot == 9 ? "0" : "\(slot + 1)"
     }
 
-    private func moveHighlight(by offset: Int) -> KeyPress.Result {
+    private func moveHighlight(by offset: Int) -> Bool {
         let items = visibleClippings
-        guard !items.isEmpty else { return .ignored }
+        guard !items.isEmpty else { return false }
         let next: Int
         if let current = highlightedID.flatMap({ id in items.firstIndex { $0.id == id } }) {
             next = min(max(current + offset, 0), items.count - 1)
         } else if offset > 0 {
             next = 0
         } else {
-            return .ignored
+            return false
         }
         highlightedID = items[next].id
         preview.present(items[next], query: searchText)
@@ -515,7 +503,7 @@ struct MenuBarContentView: View {
         AssistiveTech.announce(clipping.accessibilityTitle(
             smartTitle: store.generatesSmartTitles ? clipping.smartTitle : nil
         ))
-        return .handled
+        return true
     }
 
     private func copyHighlighted() {
@@ -523,30 +511,58 @@ struct MenuBarContentView: View {
         copy(highlighted)
     }
 
-    private func openHighlighted() -> KeyPress.Result {
-        guard let highlighted else { return .ignored }
+    private func openHighlighted() -> Bool {
+        guard let highlighted else { return false }
         openDetail(highlighted.id)
-        return .handled
+        return true
     }
 
     /// Copies the row whose badge matches the digit that was just pressed with Option.
-    private func copyQuickSlot(matching key: KeyEquivalent) -> KeyPress.Result {
-        guard let typed = key.character.wholeNumberValue else { return .ignored }
-        let slot = typed == 0 ? 9 : typed - 1
-        guard visibleClippings.indices.contains(slot) else { return .ignored }
+    private func copyQuickSlot(_ slot: Int) -> Bool {
+        guard visibleClippings.indices.contains(slot) else { return false }
         copy(visibleClippings[slot])
-        return .handled
+        return true
     }
 
-    /// Spotlight-style: an active search clears first, and only an already-empty search
-    /// closes the popover outright, so clearing a typo never also dismisses the window.
-    private func handleEscape() -> KeyPress.Result {
-        if searchText.isEmpty {
-            navigator.closePopover()
-        } else {
+    /// Escape undoes one layer at a time: leaving a clipping's text behind is handled by
+    /// the key router itself, then a detail or Recently Deleted page goes back, then an
+    /// active search clears, and only on the bare list does Escape close the popover —
+    /// so clearing a typo never also dismisses the window.
+    private func handleEscape() -> Bool {
+        if page != .list {
+            go(to: .list)
+        } else if !searchText.isEmpty {
             withAnimation(.snappy(duration: 0.2).motionSafe) { searchText = "" }
+        } else {
+            navigator.closePopover()
         }
-        return .handled
+        return true
+    }
+
+    /// Every popover key, decided without relying on what has focus.
+    private func handleKey(_ key: PopoverKey) -> Bool {
+        switch key {
+        case .escape:
+            return handleEscape()
+        case .submit:
+            // Only the list copies on Return; the detail page's Return belongs to the
+            // text, and Recently Deleted has its own buttons.
+            guard page == .list, let highlighted else { return false }
+            copy(highlighted)
+            return true
+        case .moveDown:
+            return page == .list ? moveHighlight(by: 1) : false
+        case .moveUp:
+            return page == .list ? moveHighlight(by: -1) : false
+        case .openDetail:
+            return page == .list ? openHighlighted() : false
+        case .quickSlot(let slot):
+            return page == .list ? copyQuickSlot(slot) : false
+        case .typing:
+            // Focus went astray; put it back so the key lands in the search field.
+            if page == .list { isSearchFocused = true }
+            return false
+        }
     }
 
     /// After typing pauses, tells VoiceOver how many clippings match — the result list

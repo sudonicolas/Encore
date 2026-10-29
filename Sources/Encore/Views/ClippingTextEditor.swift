@@ -72,7 +72,9 @@ private final class EditorTextView: NSTextView {
         return super.performKeyEquivalent(with: event)
     }
 
-    /// Escape leaves the text first; a second Escape then goes Back.
+    /// Escape leaves the text first; a second Escape then goes Back. PopoverKeyHandler
+    /// normally gets there first, so this is the fallback for the History window, where
+    /// there is no popover key router.
     override func cancelOperation(_ sender: Any?) {
         if isEditable, window?.firstResponder === self {
             window?.makeFirstResponder(nil)

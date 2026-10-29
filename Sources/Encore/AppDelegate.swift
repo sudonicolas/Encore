@@ -216,6 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard let popover, let button = statusItem?.button, !popover.isShown else { return }
+        closesOnRequest = false
         popover.contentViewController = makePopoverContent()
         ClipboardMonitor.shared.refreshAccessStatus()
         // Apple Intelligence may have finished downloading since launch.
@@ -227,8 +228,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
         ClippingPreviewController.shared.anchorView = popover.contentViewController?.view
-        // Once the new view is in its window, so it can put the cursor in the search field.
-        NotificationCenter.default.post(name: .clipboardPopoverWillShow, object: nil)
+        // On the next turn of the run loop, not now: `makePopoverContent` builds a brand
+        // new view for every open, and a notification posted while that view is still
+        // being mounted can arrive before it has subscribed — which left the cursor out
+        // of the search field, and (before PopoverKeyHandler) the whole popover without a
+        // keyboard. The view starts on the list with an empty search anyway, so nothing
+        // stale shows in the meantime.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .clipboardPopoverWillShow, object: nil)
+        }
         closeOnClickElsewhere()
     }
 
@@ -250,10 +258,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func closePopover(animated: Bool = true) {
         reopensPopover = false
         guard let popover, popover.isShown else { return }
+        // Set for the whole close, not just the call: AppKit does not always consult
+        // `popoverShouldClose` before `performClose` returns, and clearing this straight
+        // away let the veto there reject a close this app had itself asked for — so
+        // Escape did nothing when the popover had been reopened within a second or so of
+        // the last one closing. Cleared in `popoverDidClose`.
+        closesOnRequest = true
+        // The hover preview is a child window of the popover's, and `performClose` does
+        // nothing at all while one is attached — not even asking the delegate — so the
+        // card goes first. This is why Escape did nothing after arrowing down a row: the
+        // keyboard was fine, the close was being dropped on the floor.
+        ClippingPreviewController.shared.dismiss()
         if animated {
-            closesOnRequest = true
             popover.performClose(nil)
-            closesOnRequest = false
+            // `performClose` can still be refused, and Escape has to close the popover
+            // either way. If it is somehow still open on the next turn, close it outright.
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let popover = self.popover, popover.isShown, self.closesOnRequest
+                else { return }
+                popover.animates = false
+                popover.close()
+            }
         } else {
             popover.animates = false
             popover.close()
@@ -415,6 +440,7 @@ extension AppDelegate: NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         popoverIsClosing = false
+        closesOnRequest = false
         ClippingPreviewController.shared.anchorView = nil
         // Settle any text being edited, and let the closed view go.
         store.finishAllEditing()
