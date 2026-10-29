@@ -129,13 +129,31 @@ The full policy is in [PRIVACY.md](PRIVACY.md).
 
 ## Install
 
-### From a release
+### Download
 
-1. Download `Encore.zip` from [Releases](https://github.com/sudonicolas/encore/releases),
-   unzip it, and drag **Encore** to **Applications**.
-2. The first time you open it, macOS may say it can't verify the developer, because
-   Encore isn't notarized by Apple. Open **System Settings → Privacy & Security**, scroll
-   down, and click **Open Anyway** next to the message about Encore.
+1. Download **Encore.dmg** from [nicolasx.com](https://nicolasx.com) or
+   [Releases](https://github.com/sudonicolas/Encore/releases) and double-click it. A window opens with the Encore icon and an Applications folder.
+2. **Drag Encore onto Applications.** That copies the app to your Mac.
+3. Close the window, then eject the disk image: click the eject button next to **Encore**
+   in the Finder sidebar, or drag it to the Trash. You can delete the downloaded
+   `Encore.dmg` too.
+4. Open **Encore** from Applications (or Spotlight, ⌘ Space). It has no Dock icon: look for
+   the Encore mark in the menu bar, at the top right of the screen.
+5. Encore asks to read what other apps copy. Choose **Allow**; it can't record anything
+   otherwise (see *Clipboard permission* below).
+
+**First time opening it.** Encore isn't notarized by Apple yet, so macOS may say it can't
+verify the app. That's expected, and it only happens once:
+
+1. Click **Done** (not *Move to Trash*).
+2. Open **System Settings → Privacy & Security** and scroll down to the message about
+   Encore.
+3. Click **Open Anyway**, then enter your password or use Touch ID.
+4. Open Encore again and click **Open**.
+
+To start Encore when you log in, open its menu bar icon, choose Settings and turn on
+*Open at login*. This works once Encore is in Applications, not while it is still running
+from the disk image.
 
 ### Build from source
 
@@ -161,6 +179,38 @@ For quick iteration, `swift build` and `swift run` work too. They run the bare e
 rather than an app bundle, so there's no icon, no Dock hiding, no login item and no
 sandbox. They also read and write `~/Library/Application Support/Encore/` instead of the
 container, so they start with an empty history.
+
+### Disk image for download
+
+`./build.sh --dmg` builds the same app and packs it into `build/Encore.dmg`, the
+drag-to-install image described above. `tools/make-dmg.sh` lays out the window and
+`tools/dmg/make-background.py` draws its backdrop. Laying out the window drives Finder with
+AppleScript, so the first run asks for permission to control it.
+
+Without a Developer ID certificate, the image holds an ad-hoc signed app and its backdrop
+carries the *Open Anyway* steps. To remove the warning for everyone, create a **Developer ID
+Application** certificate with the same Apple Developer Program membership the App Store
+build uses (Xcode → Settings → Accounts → Manage Certificates → +; only the account holder
+can), make an app-specific password at [account.apple.com](https://account.apple.com), and
+store notarization credentials once:
+
+```sh
+xcrun notarytool store-credentials encore-notary --apple-id you@example.com --team-id TEAMID
+NOTARY_PROFILE=encore-notary ./build.sh --dmg
+```
+
+`build.sh` signs with the Developer ID certificate it finds, submits the image to Apple,
+waits for the verdict and staples the ticket, so the image opens with no warning at all and
+its backdrop drops the *Open Anyway* steps.
+
+To publish it, attach it to a GitHub release under exactly the name `Encore.dmg`:
+`https://github.com/sudonicolas/Encore/releases/latest/download/Encore.dmg` always serves the
+newest one, and [nicolasx.com/Encore.dmg](https://nicolasx.com/Encore.dmg) redirects there.
+
+```sh
+gh release create v1.2.0 build/Encore.dmg --title "Encore 1.2.0" --notes "…"   # a new version
+gh release upload v1.2.0 build/Encore.dmg --clobber                            # replace the file
+```
 
 ### Mac App Store build
 
@@ -203,6 +253,8 @@ Resources/Assets.xcassets          The menu bar mark, as Encore's own SF Symbols
 Resources/PrivacyInfo.xcprivacy    Privacy manifest (no tracking, no data collected)
 Resources/container-migration.plist  Moves pre-sandbox data into the container
 Encore.entitlements                App Sandbox entitlements
+tools/make-dmg.sh                  Packs Encore.app into the drag-to-install disk image
+tools/dmg/make-background.py       Draws the disk image's window backdrop
 tools/export-icon-preview.sh       Renders the icon to docs/icon.png
 tools/make-mark.py                 Draws the mark: icon artwork and menu bar symbols
 ```

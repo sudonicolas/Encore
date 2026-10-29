@@ -6,6 +6,12 @@
 #                            one (a stable signature keeps macOS from asking about the app's
 #                            data on every rebuild), ad-hoc otherwise. Override with
 #                            SIGN_IDENTITY="…".
+#   ./build.sh --dmg         Download build for your website or GitHub Releases: the same app,
+#                            packed into build/Encore.dmg, a drag-to-install disk image. Signed
+#                            with a Developer ID Application certificate when you have one
+#                            (ad-hoc otherwise, and the disk image then carries the "Open
+#                            Anyway" steps). Set NOTARY_PROFILE to a notarytool keychain profile
+#                            to notarize and staple it, so it opens with no warning at all.
 #   ./build.sh --app-store   Mac App Store build: embeds the provisioning profile, signs for
 #                            distribution and wraps the app in build/Encore.pkg, ready to
 #                            upload with Transporter. See docs/APP_STORE.md.
@@ -16,6 +22,7 @@ APP_NAME="Encore"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_BUNDLE="$ROOT_DIR/build/$APP_NAME.app"
 PKG_PATH="$ROOT_DIR/build/$APP_NAME.pkg"
+DMG_PATH="$ROOT_DIR/build/$APP_NAME.dmg"
 ICON_SOURCE="$ROOT_DIR/Resources/AppIcon.icon"
 ASSET_SOURCE="$ROOT_DIR/Resources/Assets.xcassets"
 ENTITLEMENTS="$ROOT_DIR/$APP_NAME.entitlements"
@@ -25,7 +32,8 @@ MODE="local"
 case "${1:-}" in
     "") ;;
     --app-store) MODE="app-store" ;;
-    *) echo "Usage: $0 [--app-store]" >&2; exit 64 ;;
+    --dmg) MODE="dmg" ;;
+    *) echo "Usage: $0 [--dmg | --app-store]" >&2; exit 64 ;;
 esac
 
 # First identity whose name starts with one of the given prefixes, if any.
@@ -63,6 +71,12 @@ if [ "$MODE" = "app-store" ]; then
     cp "$ENTITLEMENTS" "$SIGNING_ENTITLEMENTS"
     plutil -insert com\\.apple\\.application-identifier -string "$APP_ID" "$SIGNING_ENTITLEMENTS"
     plutil -insert com\\.apple\\.developer\\.team-identifier -string "$TEAM_ID" "$SIGNING_ENTITLEMENTS"
+elif [ "$MODE" = "dmg" ]; then
+    # An Apple Development signature means nothing on someone else's Mac, so a download is
+    # signed with a Developer ID or not at all (ad-hoc).
+    APP_IDENTITY="${SIGN_IDENTITY:-$(find_identity codesigning "Developer ID Application")}"
+    APP_IDENTITY="${APP_IDENTITY:--}"
+    SIGNING_ENTITLEMENTS="$ENTITLEMENTS"
 else
     APP_IDENTITY="${SIGN_IDENTITY:-$(find_identity codesigning "Apple Development")}"
     APP_IDENTITY="${APP_IDENTITY:--}"
@@ -74,7 +88,7 @@ swift build -c release --arch arm64 --arch x86_64 --package-path "$ROOT_DIR"
 BUILD_DIR="$(swift build -c release --arch arm64 --arch x86_64 --package-path "$ROOT_DIR" --show-bin-path)"
 
 echo "==> Assembling $APP_NAME.app..."
-rm -rf "$APP_BUNDLE" "$PKG_PATH"
+rm -rf "$APP_BUNDLE" "$PKG_PATH" "$DMG_PATH"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
@@ -128,6 +142,25 @@ if [ "$MODE" = "app-store" ]; then
     echo "==> Done."
     echo "Installer package: $PKG_PATH"
     echo "Upload it with the Transporter app (free on the Mac App Store). See docs/APP_STORE.md."
+elif [ "$MODE" = "dmg" ]; then
+    NOTE="--first-launch-note"
+    [ "$APP_IDENTITY" != "-" ] && [ -n "${NOTARY_PROFILE:-}" ] && NOTE=""
+    echo "==> Packaging $APP_NAME.dmg..."
+    "$ROOT_DIR/tools/make-dmg.sh" "$APP_BUNDLE" "$DMG_PATH" $NOTE
+    if [ "$APP_IDENTITY" != "-" ]; then
+        codesign --force --sign "$APP_IDENTITY" "$DMG_PATH"
+    fi
+    if [ -z "$NOTE" ]; then
+        echo "==> Notarizing (this takes a few minutes)..."
+        xcrun notarytool submit "$DMG_PATH" --keychain-profile "$NOTARY_PROFILE" --wait
+        xcrun stapler staple "$DMG_PATH"
+    fi
+    echo "==> Done."
+    echo "Disk image: $DMG_PATH"
+    if [ -n "$NOTE" ]; then
+        echo "Not notarized: people will need Privacy & Security → Open Anyway on first launch."
+        echo "See README → Distribute outside the App Store to remove that."
+    fi
 else
     echo "==> Done."
     echo "App bundle: $APP_BUNDLE"
