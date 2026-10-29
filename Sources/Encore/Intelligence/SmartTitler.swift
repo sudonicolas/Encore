@@ -103,7 +103,7 @@ final class SmartTitler {
         let response = try await session.respond(
             to: "\(languageHint(for: snippet))Snippet:\n\(snippet)",
             generating: GeneratedTitle.self,
-            options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 60)
+            options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 60)
         )
         return cleaned(response.content.title)
     }
