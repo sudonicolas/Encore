@@ -14,7 +14,7 @@ struct IntelligenceMenu: View {
     /// Whether the menu has anything to offer: a non-empty text clipping, on a Mac that
     /// can run Apple Intelligence.
     static func isShown(for clipping: Clipping) -> Bool {
-        text(of: clipping) != nil && Intelligence.status != .unsupported
+        text(of: clipping) != nil && Intelligence.isPossible
     }
 
     private static func text(of clipping: Clipping) -> String? {
@@ -26,7 +26,7 @@ struct IntelligenceMenu: View {
 
     var body: some View {
         let status = Intelligence.status
-        if let text = Self.text(of: clipping), status != .unsupported {
+        if let text = Self.text(of: clipping), Intelligence.isPossible {
             Menu {
                 if status == .available {
                     Section("Rewrite") {
@@ -45,6 +45,12 @@ struct IntelligenceMenu: View {
                 Label("Apple Intelligence", systemImage: "sparkles")
             }
             .menuIndicator(.hidden)
+            // Hiding the indicator stops it being drawn but not the width being kept for
+            // it, which left the sparkles pushed off-centre in a pill wider than the round
+            // buttons beside it. Sizing to the label drops that reserved space, and the
+            // circular border shape then matches its neighbours.
+            .fixedSize()
+            .buttonBorderShape(.circle)
             .help("Proofread, rewrite or summarize with Apple Intelligence")
             .accessibilityInputLabels(["Apple Intelligence", "Writing Tools", "Sparkles"])
         }

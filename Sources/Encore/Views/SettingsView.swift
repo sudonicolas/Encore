@@ -9,7 +9,7 @@ private let settingsWidth: CGFloat = 520
 
 struct GeneralSettingsView: View {
     @Environment(ClipboardStore.self) private var store
-    @State private var accessBehavior = NSPasteboard.general.accessBehavior
+    @State private var accessBehaviorIsAsk = false
 
     var body: some View {
         @Bindable var store = store
@@ -47,6 +47,7 @@ struct GeneralSettingsView: View {
                         Text("\($0)").tag($0)
                     }
                 }
+                Toggle("Preview on hover", isOn: $store.showsHoverPreview)
             }
 
             Section {
@@ -81,11 +82,13 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
-        .frame(width: settingsWidth, height: accessNote == nil ? 548 : 598)
+        .frame(width: settingsWidth, height: accessNote == nil ? 584 : 634)
         .onAppear {
             store.refreshLaunchAtLoginStatus()
             ClipboardMonitor.shared.refreshAccessStatus()
-            accessBehavior = NSPasteboard.general.accessBehavior
+            if #available(macOS 15.4, *) {
+                accessBehaviorIsAsk = NSPasteboard.general.accessBehavior == .ask
+            }
         }
     }
 
@@ -95,7 +98,7 @@ struct GeneralSettingsView: View {
         if store.isPasteboardAccessDenied {
             return "\(AppInfo.name) isn't allowed to read the clipboard, so nothing is recorded."
         }
-        if accessBehavior == .ask {
+        if accessBehaviorIsAsk {
             return "macOS asks before \(AppInfo.name) reads the clipboard. Choose Allow to record without interruptions."
         }
         return nil

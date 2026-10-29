@@ -27,6 +27,8 @@ struct ClippingRowView: View {
     var onCopy: (Clipping) -> Void
     /// Called with the clipping's id when the detail chevron is clicked.
     var onOpen: (UUID) -> Void
+    /// Called when the pointer enters or leaves the row.
+    var onHoverChange: (Bool) -> Void = { _ in }
 
     @Environment(ClipboardStore.self) private var store
     @Environment(\.undoManager) private var undoManager
@@ -37,13 +39,27 @@ struct ClippingRowView: View {
     private var smartTitle: String? { store.generatesSmartTitles ? clipping.smartTitle : nil }
 
     var body: some View {
+        // The buttons are siblings of the copy area, never inside it: a Button nested in
+        // a view with its own tap gesture leaves SwiftUI to decide which one a click
+        // belongs to, and a click on the chevron must always open the clipping.
         HStack(spacing: 10) {
-            summary
+            HStack(spacing: 10) {
+                summary
 
-            if isCopied {
-                CopiedBadge()
-                    .motionSafeTransition(.opacity.combined(with: .scale(scale: 0.8)))
-            } else if isHovering {
+                if isCopied {
+                    CopiedBadge()
+                        .motionSafeTransition(.opacity.combined(with: .scale(scale: 0.8)))
+                } else if !isHovering, let quickCopyKey {
+                    QuickCopyBadge(key: quickCopyKey)
+                        .motionSafeTransition(.opacity)
+                }
+            }
+            .padding(.leading, 8)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+            .onTapGesture { onCopy(clipping) }
+
+            if isHovering && !isCopied {
                 // Pointer-only shortcuts; VoiceOver and Voice Control reach the same
                 // actions through the row's actions and context menu.
                 HStack(spacing: 0) {
@@ -53,9 +69,6 @@ struct ClippingRowView: View {
                 .buttonStyle(IconButtonStyle())
                 .transition(.opacity)
                 .accessibilityHidden(true)
-            } else if let quickCopyKey {
-                QuickCopyBadge(key: quickCopyKey)
-                    .motionSafeTransition(.opacity)
             }
 
             Button {
@@ -69,23 +82,36 @@ struct ClippingRowView: View {
             .help("Show Details")
             .accessibilityInputLabels(["Show Details", "Details", "Open"])
         }
-        .padding(.leading, 8)
         .padding(.trailing, 2)
-        .padding(.vertical, 5)
         .background {
             if isHighlighted {
-                ConcentricRectangle.row
-                    .fill(Color.accentColor.opacity(0.16))
-                    .overlay {
-                        ConcentricRectangle.row
-                            .stroke(Color.accentColor.opacity(contrast == .increased ? 1 : 0.55), lineWidth: 1)
-                    }
+                if #available(macOS 26.0, *) {
+                    ConcentricRectangle.row
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay {
+                            ConcentricRectangle.row
+                                .stroke(Color.accentColor.opacity(contrast == .increased ? 1 : 0.55), lineWidth: 1)
+                        }
+                } else {
+                    RoundedRectangle(cornerRadius: UIRadius.rowMinimum, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: UIRadius.rowMinimum, style: .continuous)
+                                .stroke(Color.accentColor.opacity(contrast == .increased ? 1 : 0.55), lineWidth: 1)
+                        }
+                }
             }
         }
-        .contentShape(.row)
-        .onTapGesture { onCopy(clipping) }
+        .adaptiveRowContentShape()
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
+            onHoverChange(hovering)
+        }
+        // A row that goes away or is reused never keeps a hover it can no longer end,
+        // which left pin and delete icons where the Option-digit hints belong.
+        .onDisappear {
+            isHovering = false
+            onHoverChange(false)
         }
         .contextMenu {
             Button("Copy") { onCopy(clipping) }

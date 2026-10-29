@@ -24,7 +24,11 @@ final class SettingsWindowController: NSWindowController {
 
         tabs.addTabViewItem(pane("General", symbol: "gearshape", GeneralSettingsView()))
         tabs.addTabViewItem(pane("History", symbol: "clock.arrow.circlepath", HistorySettingsView()))
-        tabs.addTabViewItem(pane("Intelligence", symbol: "sparkles", IntelligenceSettingsView()))
+        // Left out where Apple Intelligence cannot run — an older macOS, or a Mac that
+        // does not support it — rather than offering a pane whose every control is off.
+        if Intelligence.isPossible {
+            tabs.addTabViewItem(pane("Intelligence", symbol: "sparkles", IntelligenceSettingsView()))
+        }
         tabs.addTabViewItem(pane("Privacy", symbol: "hand.raised", PrivacySettingsView()))
         tabs.addTabViewItem(pane("About", symbol: "info.circle", AboutSettingsView()))
 

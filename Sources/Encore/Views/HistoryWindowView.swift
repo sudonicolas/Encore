@@ -514,7 +514,8 @@ private struct HistoryDetail: View {
             clipping: clipping,
             runner: isDeleted ? nil : runner,
             searchQuery: searchQuery,
-            selectedText: $selectedText
+            selectedText: $selectedText,
+            isEditable: !isDeleted
         )
             .navigationTitle(clipping.sourceAppName ?? clipping.kindTitle)
             .toolbar {
@@ -539,7 +540,9 @@ private struct HistoryDetail: View {
                         ToolbarItem {
                             IntelligenceMenu(clipping: clipping, runner: runner)
                         }
-                        ToolbarSpacer(.fixed)
+                        if #available(macOS 26.0, *) {
+                            ToolbarSpacer(.fixed)
+                        }
                     }
                     ToolbarItemGroup {
                         ClippingCopyButton(clipping: clipping, textOverride: selectedText)

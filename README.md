@@ -12,10 +12,10 @@
 ---
 
 Encore keeps everything you copy (text, images and files) one click away in the menu bar.
-It's built with SwiftUI and AppKit for the macOS 26+ Liquid Glass design, it's fast, and it
-stays out of the way. Long clippings get a short title written on your Mac by Apple
-Intelligence, and any text clipping can be proofread, rewritten, summarized or explained
-without leaving the menu bar.
+It's built with SwiftUI and AppKit for macOS 15 and later, with Liquid Glass on macOS 26+.
+It's fast and stays out of the way. On supported Macs with macOS 26+, long clippings get a
+short title written on your Mac by Apple Intelligence, and text can be proofread,
+rewritten, summarized or explained without leaving the menu bar.
 
 Free and open source. No account, no subscription, no cloud.
 
@@ -71,13 +71,24 @@ Free and open source. No account, no subscription, no cloud.
 - **History window.** Sidebar (All, Pinned, Text, Images, Files, Recently Deleted), list and
   detail, with search, multi-select, context menus, swipe actions and keyboard commands
   (Return copies, ⌫ deletes, ⌘C copies, ⌘Z undoes).
+- **Hover preview.** Rest the pointer on a row (or arrow down to it) and a card opens to the
+  left of the popover with the whole clipping: as much text as the screen holds, code in a
+  monospaced font, images at size, files with their folders. Long clippings fade out and say
+  how many lines there are. Turn it off in Settings → General.
+- **Edit text in place.** Open a text clipping and click into it to fix or rework it. It stays
+  plain text, and Copy, search and the list use your edit straight away. ⌘Z and ⇧⌘Z undo and
+  redo (Control-Z and Control-⇧Z work too). Edits aren't available in Recently Deleted.
+- **Version history.** Each editing session keeps the text it replaced, up to 50 versions per
+  clipping. Once a clipping has been edited, a *versions* button in its bottom bar lists
+  them, and *Restore* brings one back. The text it replaces is kept as a version too, so a
+  restore can always be walked back.
 - **Pin** what you reuse. Pinned clippings stay at the top and are never trimmed.
 - **Recently Deleted.** Deleting is always recoverable for 30 days, with Undo right away.
 - **No duplicates.** Copying something that's already in history moves it to the top.
 - **Colour swatches.** Copy a hex colour (`#FF6B35`, `#fc0`, or `#6C5CE7CC` with alpha)
   and its row shows the colour itself, in the popover and in History.
 
-**Apple Intelligence** (on device, requires an Apple Intelligence–capable Mac)
+**Apple Intelligence** (on device, requires macOS 26+ and an Apple Intelligence–capable Mac)
 - **Smart titles.** Long clippings get a two-to-six-word title ("Flight confirmation email",
   "Python retry decorator"), written in the clipping's own language, so a long list can be
   scanned at a glance. Titles are searchable too.
@@ -96,8 +107,12 @@ Free and open source. No account, no subscription, no cloud.
 - **VoiceOver**: each clipping reads as one item with Copy, Pin, Show Details and Delete
   as actions; results are announced, and rotors jump to pinned clippings, images and files.
 - **Voice Control**: every button has a speakable name.
-- **Keyboard**: ⇧⌘V opens the popover from any app; ↑ and ↓ in the popover, Return to
-  copy, ⌘↓ to open a clipping.
+- **Keyboard**: ⇧⌘V opens and closes the popover from any app. In it the top clipping is
+  already highlighted, so Return copies straight away; ↑ and ↓ move the highlight, ⌘↓
+  opens a clipping (⌘↑ goes back), and ⌥⁉1 through ⌥⁉0 copy one of the first ten
+  outright. Escape steps back one layer at a time: it leaves a clipping's text, then the
+  page, then clears the search, and only then closes the popover. These work wherever the
+  cursor happens to be.
 - **Text Size** up to 200% (Settings → General, or ⌘+ and ⌘−).
 - Follows Reduce Motion, Increase Contrast and Differentiate Without Color, with colours
   that meet Apple's contrast minimums.
@@ -123,19 +138,31 @@ The full policy is in [PRIVACY.md](PRIVACY.md).
 
 ## Requirements
 
-- macOS 26 or later. Tested on macOS 27.
-- For Apple Intelligence features: a Mac that supports Apple Intelligence, with it turned
-  on in System Settings → Apple Intelligence & Siri. Everything else works on any Mac.
+- macOS 15 or later.
+- For Apple Intelligence features: macOS 26 or later and a Mac that supports Apple
+  Intelligence, with it turned on in System Settings → Apple Intelligence & Siri.
 
 ## Install
 
-### From a release
+### Download
 
-1. Download `Encore.zip` from [Releases](https://github.com/sudonicolas/encore/releases),
-   unzip it, and drag **Encore** to **Applications**.
-2. The first time you open it, macOS may say it can't verify the developer, because
-   Encore isn't notarized by Apple. Open **System Settings → Privacy & Security**, scroll
-   down, and click **Open Anyway** next to the message about Encore.
+1. Download **Encore.dmg** from [nicolasx.com](https://nicolasx.com) or
+   [Releases](https://github.com/sudonicolas/Encore/releases) and double-click it. A window opens with the Encore icon and an Applications folder.
+2. **Drag Encore onto Applications.** That copies the app to your Mac.
+3. Close the window, then eject the disk image: click the eject button next to **Encore**
+   in the Finder sidebar, or drag it to the Trash. You can delete the downloaded
+   `Encore.dmg` too.
+4. Open **Encore** from Applications (or Spotlight, ⌘ Space). It has no Dock icon: look for
+   the Encore mark in the menu bar, at the top right of the screen.
+5. Encore asks to read what other apps copy. Choose **Allow**; it can't record anything
+   otherwise (see *Clipboard permission* below).
+
+Encore is signed with a Developer ID certificate and notarized by Apple, so it opens
+normally — there is no security warning to click through.
+
+To start Encore when you log in, open its menu bar icon, choose Settings and turn on
+*Open at login*. This works once Encore is in Applications, not while it is still running
+from the disk image.
 
 ### Build from source
 
@@ -161,6 +188,35 @@ For quick iteration, `swift build` and `swift run` work too. They run the bare e
 rather than an app bundle, so there's no icon, no Dock hiding, no login item and no
 sandbox. They also read and write `~/Library/Application Support/Encore/` instead of the
 container, so they start with an empty history.
+
+### Disk image for download
+
+`./build.sh --dmg` builds the same app and packs it into `build/Encore.dmg`, the
+drag-to-install image described above. `tools/make-dmg.sh` lays out the window and
+`tools/dmg/make-background.py` draws its backdrop. Laying out the window drives Finder with
+AppleScript, so the first run asks for permission to control it.
+
+Released images are signed with a **Developer ID Application** certificate and notarized,
+which is why the download opens with no warning. Build one that way with:
+
+```sh
+xcrun notarytool store-credentials encore-notary --apple-id you@example.com --team-id TEAMID
+NOTARY_PROFILE=encore-notary ./build.sh --dmg
+```
+
+`build.sh` signs with the Developer ID certificate it finds, submits the image to Apple,
+waits for the verdict and staples the ticket. Without a certificate and `NOTARY_PROFILE` it
+still builds, but the app is ad-hoc signed and the backdrop then carries *Open Anyway* steps
+for whoever opens it. The `store-credentials` step above is only needed once per machine.
+
+To publish it, attach it to a GitHub release under exactly the name `Encore.dmg`:
+`https://github.com/sudonicolas/Encore/releases/latest/download/Encore.dmg` always serves the
+newest one, and [nicolasx.com/Encore.dmg](https://nicolasx.com/Encore.dmg) redirects there.
+
+```sh
+gh release create v1.2.0 build/Encore.dmg --title "Encore 1.2.0" --notes "…"   # a new version
+gh release upload v1.2.0 build/Encore.dmg --clobber                            # replace the file
+```
 
 ### Mac App Store build
 
@@ -203,6 +259,8 @@ Resources/Assets.xcassets          The menu bar mark, as Encore's own SF Symbols
 Resources/PrivacyInfo.xcprivacy    Privacy manifest (no tracking, no data collected)
 Resources/container-migration.plist  Moves pre-sandbox data into the container
 Encore.entitlements                App Sandbox entitlements
+tools/make-dmg.sh                  Packs Encore.app into the drag-to-install disk image
+tools/dmg/make-background.py       Draws the disk image's window backdrop
 tools/export-icon-preview.sh       Renders the icon to docs/icon.png
 tools/make-mark.py                 Draws the mark: icon artwork and menu bar symbols
 ```

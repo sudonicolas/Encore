@@ -7,6 +7,14 @@ enum ClippingKind: String, Codable {
     case fileURL
 }
 
+/// One earlier text of an edited clipping.
+struct TextVersion: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var text: String
+    /// When this text became the clipping's text: its copy time for the original.
+    var date: Date
+}
+
 /// A single entry in the clipboard history.
 struct Clipping: Identifiable, Codable, Equatable {
     let id: UUID
@@ -23,6 +31,12 @@ struct Clipping: Identifiable, Codable, Equatable {
     /// A short title written by the on-device model for long text clippings (see
     /// `SmartTitler`); nil until one has been generated.
     var smartTitle: String?
+    /// Earlier texts of this clipping, oldest first, saved when it was edited (see
+    /// `ClipboardStore.editText`). Optional so history files written before editing
+    /// existed still decode; nil or empty until the first edit.
+    var versions: [TextVersion]?
+    /// When the current text was written, once it has been edited.
+    var editedAt: Date?
 
     init(
         id: UUID = UUID(),

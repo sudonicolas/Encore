@@ -2,6 +2,7 @@ import Foundation
 import FoundationModels
 import NaturalLanguage
 
+@available(macOS 26.0, *)
 @Generable
 struct GeneratedTitle {
     @Guide(description: "Two to six words naming what the snippet is, in sentence case, with no quotes and no final period.")
@@ -53,6 +54,12 @@ final class SmartTitler {
         startIfNeeded()
     }
 
+    /// Titles a clipping again after its text was edited, which the old title no longer fits.
+    func retitle(_ id: UUID) {
+        attempted.remove(id)
+        enqueue(id)
+    }
+
     /// Queues every clipping still waiting for a title — at launch, when titles are turned
     /// on, and whenever the popover opens (the model may have finished downloading since).
     func processBacklog() {
@@ -82,12 +89,13 @@ final class SmartTitler {
                   Self.needsTitle(clipping),
                   let text = clipping.text else { continue }
             attempted.insert(id)
-            if let title = try? await Self.title(for: text) {
+            if #available(macOS 26.0, *), let title = try? await Self.title(for: text) {
                 store.setSmartTitle(title, for: id)
             }
         }
     }
 
+    @available(macOS 26.0, *)
     private static func title(for text: String) async throws -> String? {
         let snippet = Intelligence.excerpt(text, maxLength: maxInputLength).text
         // A fresh session per snippet, so one clipping never colours another's title.

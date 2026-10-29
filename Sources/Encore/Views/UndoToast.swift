@@ -20,7 +20,7 @@ struct ToastView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
         .frame(minHeight: 34)
-        .glassEffect(.regular, in: .capsule)
+        .adaptiveGlassCapsule()
         .increasedContrastBorder(Capsule())
         // The message and its button stay separate, so VoiceOver and Voice Control can
         // press Undo.

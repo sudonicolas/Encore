@@ -20,7 +20,7 @@ struct RecentlyDeletedPage: View {
                     Text("Deleted clippings stay here for \(ClipboardStore.recentlyDeletedRetentionDays) days.")
                 }
             } else {
-                ScrollView {
+                ScrollView(.vertical) {
                     LazyVStack(spacing: 1) {
                         ForEach(store.deletedClippings) { clipping in
                             DeletedClippingRow(clipping: clipping)
@@ -34,8 +34,8 @@ struct RecentlyDeletedPage: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaBar(edge: .top) { header }
-        .safeAreaBar(edge: .bottom) {
+        .adaptiveSafeAreaBar(edge: .top) { header }
+        .adaptiveSafeAreaBar(edge: .bottom) {
             if !store.deletedClippings.isEmpty {
                 Text("Clippings are permanently deleted after \(ClipboardStore.recentlyDeletedRetentionDays) days.")
                     .scaledFont(.caption)
@@ -58,7 +58,7 @@ struct RecentlyDeletedPage: View {
             Button(action: onBack) {
                 Label("Back", systemImage: "chevron.left")
             }
-            .buttonStyle(.glass)
+            .adaptiveGlassButton()
             .buttonBorderShape(.circle)
             .labelStyle(.iconOnly)
             .keyboardShortcut(.cancelAction)
@@ -76,7 +76,7 @@ struct RecentlyDeletedPage: View {
                 Button("Restore All") {
                     withAnimation(.snappy(duration: 0.25).motionSafe) { store.restoreAllDeleted() }
                 }
-                .buttonStyle(.glass)
+                .adaptiveGlassButton()
 
                 ConfirmingButton(
                     title: "Empty",
@@ -146,7 +146,7 @@ private struct DeletedClippingRow: View {
         .padding(.leading, 8)
         .padding(.trailing, 4)
         .padding(.vertical, 5)
-        .contentShape(.row)
+        .contentShape(Rectangle())
         .contextMenu {
             Button("Restore", action: restore)
         }

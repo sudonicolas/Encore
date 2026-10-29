@@ -17,29 +17,43 @@ struct ClippingDetailView: View {
     var selectedText: Binding<String?> = .constant(nil)
     /// The popover's header already names the source app and time, so it hides them here.
     var showsSourceAndDate = true
+    /// Whether a text clipping's text can be changed here. Off for Recently Deleted.
+    var isEditable = true
+
+    /// Past this many bytes the metadata bar stops counting characters and lines exactly
+    /// (see `metadataItems`).
+    private static let exactCountLimit = 500_000
 
     @Environment(ClipboardStore.self) private var store
+    @State private var showsVersions = false
+    /// The text the lookups work on: it trails what's typed, so a lookup isn't sent for
+    /// every keystroke.
+    @State private var lookupText: String?
 
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical) {
             content
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         // A scroll-edge bar (not a divider + material strip): content blurs softly
-        // beneath it as it scrolls, per the macOS 26+ scroll edge effect.
-        .safeAreaBar(edge: .bottom) {
+        // beneath it as it scrolls on macOS 26, and a plain material strip on 15.
+        .adaptiveSafeAreaBar(edge: .bottom) {
             metadata
         }
+        // Whatever ends the viewing — Back, another clipping, the window closing — also
+        // ends an editing session, so its version is settled right away.
+        .onDisappear { store.finishEditing(clipping.id) }
     }
 
     @ViewBuilder
     private var content: some View {
         switch clipping.kind {
         case .text:
-            let text = clipping.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if text.isEmpty {
+            let raw = clipping.text ?? ""
+            let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if text.isEmpty && !isEditable {
                 Text("Empty clipping")
                     .foregroundStyle(.secondary)
             } else {
@@ -61,14 +75,34 @@ struct ClippingDetailView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityAddTraits(.isHeader)
                         }
-                        SelectableText(text: text, highlightQuery: searchQuery, selectedText: selectedText)
+                        ClippingTextEditor(
+                            text: raw,
+                            isEditable: isEditable,
+                            highlightQuery: searchQuery,
+                            selectedText: selectedText,
+                            onEdit: { store.editText(of: clipping.id, to: $0) },
+                            onEndEditing: { store.finishEditing(clipping.id) }
+                        )
+                        .overlay(alignment: .topLeading) {
+                            if raw.isEmpty {
+                                Text("Empty clipping")
+                                    .foregroundStyle(.secondary)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                        .help(isEditable ? "Click to edit. \u{2318}Z undoes and \u{21e7}\u{2318}Z redoes." : "")
                     }
-                    if store.offersOnlineLookups {
-                        LookupsSection(text: text)
-                            .id(text)
+                    if store.offersOnlineLookups, !text.isEmpty {
+                        let lookedUp = lookupText ?? text
+                        LookupsSection(text: lookedUp)
+                            .id(lookedUp)
                     }
                 }
                 .animation(.snappy(duration: 0.25).motionSafe, value: runner?.isActive)
+                .task(id: text) {
+                    guard (try? await Task.sleep(for: .seconds(0.8))) != nil else { return }
+                    lookupText = text
+                }
             }
 
         case .image:
@@ -114,9 +148,33 @@ struct ClippingDetailView: View {
             Text(metadataItems.joined(separator: " \u{00B7} "))
                 .lineLimit(1)
                 .truncationMode(.middle)
+            if let versions = clipping.versions, !versions.isEmpty {
+                Spacer(minLength: 8)
+                Button {
+                    showsVersions = true
+                } label: {
+                    Label(versions.count == 1 ? "1 version" : "\(versions.count) versions",
+                          systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .help("Version History: see and restore earlier versions of this text")
+                .accessibilityLabel("Version History")
+                .accessibilityValue(versions.count == 1 ? "1 earlier version" : "\(versions.count) earlier versions")
+                .accessibilityInputLabels(["Version History", "Versions", "History"])
+                .popover(isPresented: $showsVersions, arrowEdge: .top) {
+                    VersionHistoryView(clipping: clipping, canRestore: isEditable) {
+                        showsVersions = false
+                    }
+                }
+            }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(metadataItems.map(Optional.some).accessibilityJoined)
+        // .contain, not .ignore: the Version History button sits in this bar now, and
+        // ignoring the children would take it away from VoiceOver and Voice Control
+        // altogether. The text describes itself just above instead.
+        .accessibilityElement(children: .contain)
         .scaledFont(.caption)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,9 +191,17 @@ struct ClippingDetailView: View {
         switch clipping.kind {
         case .text:
             let text = clipping.text ?? ""
-            items.append(text.count == 1 ? "1 character" : "\(text.count.formatted()) characters")
-            let lines = text.split(whereSeparator: \.isNewline).count
-            if lines > 1 { items.append("\(lines.formatted()) lines") }
+            // Counting graphemes and splitting lines both walk the whole string, and this
+            // bar is rebuilt on every keystroke now that the text is editable here. Past
+            // the size where the preview also stops working character by character, the
+            // byte count stands in.
+            if text.utf8.count > Self.exactCountLimit {
+                items.append("\(text.utf8.count.formatted()) bytes")
+            } else {
+                items.append(text.count == 1 ? "1 character" : "\(text.count.formatted()) characters")
+                let lines = text.split(whereSeparator: \.isNewline).count
+                if lines > 1 { items.append("\(lines.formatted()) lines") }
+            }
         case .image:
             if let label = clipping.text { items.append(label) }
         case .fileURL:
