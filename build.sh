@@ -93,6 +93,23 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+
+# SwiftPM stamps the binary's "built with SDK" field with the deployment target (15.0)
+# instead of the SDK that really built it. macOS 26 and later read that field to decide
+# whether an app gets the current look, and an app claiming SDK 15 is given the old
+# pre-Liquid Glass chrome, however many #available(macOS 26) branches it has. Restamp it
+# with the real SDK; the deployment target stays 15.0, so macOS 15 still runs the app.
+DEPLOYMENT_TARGET="$(plutil -extract LSMinimumSystemVersion raw "$INFO_PLIST")"
+SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
+vtool -set-build-version macos "$DEPLOYMENT_TARGET" "$SDK_VERSION" -replace \
+    -output "$APP_BUNDLE/Contents/MacOS/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+for arch in arm64 x86_64; do
+    if ! vtool -arch "$arch" -show-build "$APP_BUNDLE/Contents/MacOS/$APP_NAME" | grep -q "sdk $SDK_VERSION"; then
+        echo "The $arch slice was not restamped with SDK $SDK_VERSION; the app would get the legacy look." >&2
+        exit 1
+    fi
+done
+
 cp "$INFO_PLIST" "$APP_BUNDLE/Contents/Info.plist"
 # Privacy manifest (required by the App Store) and the one-time move of pre-sandbox data
 # into the app's container.
