@@ -555,8 +555,12 @@ struct MenuBarContentView: View {
             return page == .list ? moveHighlight(by: 1) : false
         case .moveUp:
             return page == .list ? moveHighlight(by: -1) : false
-        case .openDetail:
+        case .openDetail, .drillIn:
             return page == .list ? openHighlighted() : false
+        case .back:
+            guard page != .list else { return false }
+            go(to: .list)
+            return true
         case .quickSlot(let slot):
             return page == .list ? copyQuickSlot(slot) : false
         case .typing:

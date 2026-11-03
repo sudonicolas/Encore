@@ -14,7 +14,7 @@ import CoreGraphics
 // MARK: - Keys
 
 enum Key: CGKeyCode {
-    case escape = 53, `return` = 36, down = 125, up = 126, one = 18, v = 9, z = 6
+    case escape = 53, `return` = 36, left = 123, right = 124, down = 125, up = 126, one = 18, v = 9, z = 6
 }
 
 let encoreBundleID = "io.github.sudonicolas.encore"
@@ -299,6 +299,27 @@ check("Command-Down opens detail, Escape backs out") {
     let closed = wait { !isPopoverOpen }
     if !closed { closePopover() }
     return (closed, closed ? "" : "the second Escape left it open")
+}
+
+// 9b. Right opens a clipping (empty search: the caret is at the end, so it is free) and
+// Left comes back. One Escape not closing proves we were on the detail page; one Escape
+// closing proves Left really returned to the list.
+check("Right opens detail, Left goes back") {
+    guard openPopover() else { return (false, "popover did not open") }
+    press(.right)
+    _ = wait(upTo: 1.0) { false }
+    press(.escape)
+    guard wait(upTo: 1.0, for: { !isPopoverOpen }) == false else {
+        return (false, "Right did not open the detail page")
+    }
+    press(.right)
+    _ = wait(upTo: 1.0) { false }
+    press(.left)
+    _ = wait(upTo: 1.0) { false }
+    press(.escape)
+    let closed = wait { !isPopoverOpen }
+    if !closed { closePopover() }
+    return (closed, closed ? "" : "Left did not return to the list")
 }
 
 // 10. Option+1 copies the first row outright.
