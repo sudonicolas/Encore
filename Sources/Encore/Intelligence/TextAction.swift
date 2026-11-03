@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 import FoundationModels
 
 /// Something Apple Intelligence can do with a text clipping. Named after the macOS
@@ -101,8 +101,7 @@ enum TextAction: String, CaseIterable, Identifiable {
 
 /// Runs one TextAction at a time and streams its result for a detail view to show.
 @MainActor
-@Observable
-final class TextActionRunner {
+final class TextActionRunner: ObservableObject {
     enum Phase: Equatable {
         case idle
         case running
@@ -110,16 +109,20 @@ final class TextActionRunner {
         case failed(String)
     }
 
-    private(set) var action: TextAction?
-    private(set) var output = ""
-    private(set) var phase: Phase = .idle
+    @Published private(set) var action: TextAction?
+    @Published private(set) var output = ""
+    @Published private(set) var phase: Phase = .idle
     /// True when the clipping was too long to read whole, so only its beginning was used.
-    private(set) var usedExcerpt = false
+    @Published private(set) var usedExcerpt = false
 
-    @ObservationIgnored private var task: Task<Void, Never>?
-    @ObservationIgnored private var sourceText = ""
+    private var task: Task<Void, Never>?
+    private var sourceText = ""
 
     var isActive: Bool { action != nil }
+
+    /// For a detail view with no Apple Intelligence menu (a deleted clipping, say):
+    /// nothing ever starts it, so it never shows a result.
+    static let inactive = TextActionRunner()
 
     func run(_ action: TextAction, on text: String) {
         task?.cancel()

@@ -4,10 +4,9 @@ import UniformTypeIdentifiers
 
 /// Privacy settings: concealed-content filtering and the ignored-apps list.
 struct PrivacySettingsView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
 
     var body: some View {
-        @Bindable var store = store
         Form {
             Section {
                 Toggle("Ignore passwords and other concealed content", isOn: $store.ignoresConcealedContent)

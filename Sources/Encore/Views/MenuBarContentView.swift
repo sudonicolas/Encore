@@ -14,11 +14,11 @@ import AppKit
 /// the same digits shown on those rows — and Escape clears the search, then closes the
 /// popover. ⇧⌘V (see GlobalHotKeyManager) opens and closes the popover from any app.
 struct MenuBarContentView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @State private var searchText = ""
     @State private var page: Page = .list
     @State private var selectedText: String?
-    @State private var runner = TextActionRunner()
+    @StateObject private var runner = TextActionRunner()
     /// The row chosen with ↑ and ↓.
     @State private var highlightedID: UUID?
     /// The row showing its "Copied" confirmation.
@@ -95,7 +95,7 @@ struct MenuBarContentView: View {
         .trashUndoToast(bottomPadding: 62)
         .scaledFont(.body)
         .environment(\.textScale, store.textSize.scale)
-        .onChange(of: store.clippings) { _, clippings in
+        .onChangeCompat(of: store.clippings) { clippings in
             if case .detail(let id) = page, !clippings.contains(where: { $0.id == id }) {
                 go(to: .list)
             }
@@ -104,7 +104,7 @@ struct MenuBarContentView: View {
             if highlighted == nil { highlightedID = clippings.isEmpty ? nil : visibleClippings.first?.id }
             preview.validate(against: clippings)
         }
-        .onChange(of: searchText) { _, newValue in
+        .onChangeCompat(of: searchText) { _ in
             // The rows below the pointer are about to change.
             preview.dismiss()
             // While searching, the top match is ready to copy with Return.
@@ -272,7 +272,7 @@ struct MenuBarContentView: View {
                 .padding(.bottom, 4)
                 .animation(.snappy(duration: 0.25).motionSafe, value: store.clippings)
             }
-            .onChange(of: highlightedID) { _, id in
+            .onChangeCompat(of: highlightedID) { id in
                 guard let id else { return }
                 withAnimation(.easeOut(duration: 0.15).motionSafe) { proxy.scrollTo(id) }
             }
@@ -340,7 +340,7 @@ struct MenuBarContentView: View {
     @ViewBuilder
     private var emptyState: some View {
         if searchText.isEmpty {
-            ContentUnavailableView {
+            EmptyStateView {
                 Label("No Clippings Yet", systemImage: "doc.on.clipboard")
             } description: {
                 Text(store.isRecordingEnabled
@@ -348,7 +348,7 @@ struct MenuBarContentView: View {
                      : "Resume recording to start collecting clippings.")
             }
         } else {
-            ContentUnavailableView.search(text: searchText)
+            SearchEmptyStateView(text: searchText)
         }
     }
 
@@ -379,7 +379,7 @@ struct MenuBarContentView: View {
                     }
                 }
                 .frame(minWidth: 32, minHeight: 32)
-                .buttonBorderShape(store.deletedClippings.isEmpty ? .circle : .capsule)
+                .roundButtonBorder(store.deletedClippings.isEmpty)
                 .help("Recently Deleted")
                 .accessibilityLabel("Recently Deleted")
                 .accessibilityValue(store.deletedClippings.count == 1 ? "1 clipping" : "\(store.deletedClippings.count) clippings")
@@ -394,7 +394,7 @@ struct MenuBarContentView: View {
                         store.isRecordingEnabled ? "Pause Recording" : "Resume Recording",
                         systemImage: store.isRecordingEnabled ? "pause.fill" : "record.circle"
                     )
-                    .contentTransition(.symbolEffect(.replace))
+                    .symbolReplaceTransition()
                 }
                 .frame(width: 32, height: 32)
                 .help(store.isRecordingEnabled ? "Pause Recording" : "Resume Recording")
@@ -429,7 +429,7 @@ struct MenuBarContentView: View {
                 }
             }
             .adaptiveGlassButton()
-            .buttonBorderShape(.circle)
+            .roundButtonBorder()
             .labelStyle(.iconOnly)
             .controlSize(.large)
         }
@@ -704,7 +704,7 @@ private struct DetailHeader: View {
             }
         }
         .adaptiveGlassButton()
-        .buttonBorderShape(.circle)
+        .roundButtonBorder()
         .labelStyle(.iconOnly)
         .controlSize(.large)
         .padding(10)

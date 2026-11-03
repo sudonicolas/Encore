@@ -1,5 +1,5 @@
+import Combine
 import Foundation
-import Observation
 
 /// Single source of truth for clipping history, ignored apps, and general settings.
 /// Backed by JSON files in Application Support plus UserDefaults for scalar settings.
@@ -8,15 +8,14 @@ import Observation
 /// views, so every path to them — buttons, menus, swipe actions, VoiceOver actions, Undo —
 /// reports the same outcome.
 @MainActor
-@Observable
-final class ClipboardStore {
+final class ClipboardStore: ObservableObject {
     static let shared = ClipboardStore()
 
-    private(set) var clippings: [Clipping] = []
-    private(set) var deletedClippings: [Clipping] = []
+    @Published private(set) var clippings: [Clipping] = []
+    @Published private(set) var deletedClippings: [Clipping] = []
 
     /// The most recent move to Recently Deleted, so the popover can offer an Undo toast.
-    private(set) var lastTrash: TrashEvent?
+    @Published private(set) var lastTrash: TrashEvent?
 
     /// Deleted clippings older than this are purged automatically.
     static let recentlyDeletedRetentionDays = 30
@@ -24,11 +23,11 @@ final class ClipboardStore {
         TimeInterval(Self.recentlyDeletedRetentionDays) * 24 * 60 * 60
     }
 
-    var ignoredApps: [IgnoredApp] = [] {
+    @Published var ignoredApps: [IgnoredApp] = [] {
         didSet { saveIgnoredApps() }
     }
 
-    var maxStoredCount: Int {
+    @Published var maxStoredCount: Int {
         didSet {
             UserDefaults.standard.set(maxStoredCount, forKey: Keys.maxStored)
             trimToLimit()
@@ -36,43 +35,43 @@ final class ClipboardStore {
         }
     }
 
-    var maxDisplayedCount: Int {
+    @Published var maxDisplayedCount: Int {
         didSet { UserDefaults.standard.set(maxDisplayedCount, forKey: Keys.maxDisplayed) }
     }
 
-    var isRecordingEnabled: Bool {
+    @Published var isRecordingEnabled: Bool {
         didSet { UserDefaults.standard.set(isRecordingEnabled, forKey: Keys.recording) }
     }
 
-    var playSoundOnCopy: Bool {
+    @Published var playSoundOnCopy: Bool {
         didSet { UserDefaults.standard.set(playSoundOnCopy, forKey: Keys.sound) }
     }
 
     /// Briefly swap the menu bar icon for a checkmark when something is recorded: the
     /// visual counterpart to the sound, for people who can't hear it or keep it off.
-    var flashesMenuBarIconOnCopy: Bool {
+    @Published var flashesMenuBarIconOnCopy: Bool {
         didSet { UserDefaults.standard.set(flashesMenuBarIconOnCopy, forKey: Keys.flash) }
     }
 
     /// Show a preview of the whole clipping beside the popover while the pointer rests
     /// on a row, or the keyboard highlight is on it.
-    var showsHoverPreview: Bool {
+    @Published var showsHoverPreview: Bool {
         didSet { UserDefaults.standard.set(showsHoverPreview, forKey: Keys.hoverPreview) }
     }
 
     /// Size of clipping text in the popover and the History window.
-    var textSize: TextSize {
+    @Published var textSize: TextSize {
         didSet { UserDefaults.standard.set(textSize.rawValue, forKey: Keys.textSize) }
     }
 
     /// Skip pasteboard writes that password managers and similar apps mark as concealed,
     /// transient, or auto-generated (the nspasteboard.org conventions).
-    var ignoresConcealedContent: Bool {
+    @Published var ignoresConcealedContent: Bool {
         didSet { UserDefaults.standard.set(ignoresConcealedContent, forKey: Keys.concealed) }
     }
 
     /// Give long text clippings a short title with the on-device Apple Intelligence model.
-    var generatesSmartTitles: Bool {
+    @Published var generatesSmartTitles: Bool {
         didSet {
             UserDefaults.standard.set(generatesSmartTitles, forKey: Keys.smartTitles)
             if generatesSmartTitles { SmartTitler.shared.processBacklog() }
@@ -81,15 +80,15 @@ final class ClipboardStore {
 
     /// Offer definitions, encyclopedia summaries and currency conversions from free web
     /// services in a clipping's detail view.
-    var offersOnlineLookups: Bool {
+    @Published var offersOnlineLookups: Bool {
         didSet { UserDefaults.standard.set(offersOnlineLookups, forKey: Keys.onlineLookups) }
     }
 
     /// True when the user has set Encore to "Deny" in Privacy & Security → Paste from Other
     /// Apps, so nothing can be recorded. Refreshed by ClipboardMonitor.
-    var isPasteboardAccessDenied = false
+    @Published var isPasteboardAccessDenied = false
 
-    var launchAtLogin: Bool {
+    @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != oldValue else { return }
             launchAtLoginError = LaunchAtLoginManager.setEnabled(launchAtLogin)
@@ -98,9 +97,9 @@ final class ClipboardStore {
     }
 
     /// Set when the launch-at-login system call fails, so Settings can surface it.
-    var launchAtLoginError: String?
+    @Published var launchAtLoginError: String?
     /// Live login-item status; `.requiresApproval` means the user must allow it in System Settings.
-    private(set) var launchAtLoginStatus: LaunchAtLoginManager.Status
+    @Published private(set) var launchAtLoginStatus: LaunchAtLoginManager.Status
 
     private enum Keys {
         static let maxStored = "maxStoredCount"

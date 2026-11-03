@@ -1,23 +1,26 @@
+import Combine
 import Foundation
-import Observation
 
 /// Cross-surface navigation: lets the popover, the status item's menu and the History
 /// window hand off to each other (e.g. "Show all in History" carries the search along)
 /// without the SwiftUI views knowing about AppKit window management.
 @MainActor
-@Observable
-final class AppNavigator {
+final class AppNavigator: ObservableObject {
     static let shared = AppNavigator()
 
     /// Sidebar selection in the History window.
-    var historySection: HistorySection = .all
+    @Published var historySection: HistorySection = .all
     /// Search text in the History window.
-    var historySearch = ""
+    @Published var historySearch = ""
+    /// Whether the History window draws its search field and actions in its columns
+    /// rather than the toolbar. Only ever true on macOS 13, and only if SwiftUI did not
+    /// give the window a toolbar there (see `AppDelegate.showHistoryWindow`).
+    @Published var historyUsesInlineToolbar = false
 
     // Wired up by AppDelegate, which owns the windows and the popover.
-    @ObservationIgnored var openHistoryWindow: () -> Void = {}
-    @ObservationIgnored var openSettingsWindow: () -> Void = {}
-    @ObservationIgnored var closePopover: () -> Void = {}
+    var openHistoryWindow: () -> Void = {}
+    var openSettingsWindow: () -> Void = {}
+    var closePopover: () -> Void = {}
 
     private init() {}
 

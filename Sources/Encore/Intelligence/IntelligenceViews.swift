@@ -50,7 +50,7 @@ struct IntelligenceMenu: View {
             // buttons beside it. Sizing to the label drops that reserved space, and the
             // circular border shape then matches its neighbours.
             .fixedSize()
-            .buttonBorderShape(.circle)
+            .roundButtonBorder()
             .help("Proofread, rewrite or summarize with Apple Intelligence")
             .accessibilityInputLabels(["Apple Intelligence", "Writing Tools", "Sparkles"])
         }
@@ -74,7 +74,7 @@ struct IntelligenceMenu: View {
 /// right above where the text will appear; when it's done, "Summary ready" is announced
 /// (or the error). The text streams in silently rather than being read chunk by chunk.
 struct TextActionResultCard: View {
-    let runner: TextActionRunner
+    @ObservedObject var runner: TextActionRunner
 
     @Environment(\.colorSchemeContrast) private var contrast
     @AccessibilityFocusState private var isHeadingFocused: Bool
@@ -104,7 +104,7 @@ struct TextActionResultCard: View {
                     )
             }
             .accessibilityElement(children: .contain)
-            .onChange(of: runner.phase, initial: true) { _, phase in
+            .onChangeCompat(of: runner.phase, initial: true) { phase in
                 announce(phase, action: action)
             }
             .onDisappear { copiedTask?.cancel() }
@@ -132,7 +132,7 @@ struct TextActionResultCard: View {
         HStack(spacing: 6) {
             Image(systemName: "sparkles")
                 .foregroundStyle(contrast == .increased ? AnyShapeStyle(Brand.blue) : AnyShapeStyle(Brand.sparkle))
-                .symbolEffect(.pulse, isActive: runner.phase == .running)
+                .pulsingSymbol(isActive: runner.phase == .running)
                 .accessibilityHidden(true)
             Text(action.resultTitle)
                 .scaledFont(.headline)
@@ -147,7 +147,7 @@ struct TextActionResultCard: View {
                     Label(showCopied ? "Copied" : "Copy", systemImage: showCopied ? "checkmark" : "doc.on.doc")
                         .labelStyle(.iconOnly)
                         .foregroundStyle(showCopied ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                        .contentTransition(.symbolEffect(.replace))
+                        .symbolReplaceTransition()
                 }
                 .help("Copy Result")
                 .accessibilityLabel("Copy Result")
@@ -208,22 +208,23 @@ struct TextActionResultCard: View {
 
 /// The small sparkle that marks a title Apple Intelligence wrote.
 struct SmartTitleGlyph: View {
-    @Environment(\.backgroundProminence) private var backgroundProminence
     @Environment(\.colorSchemeContrast) private var contrast
 
-    private var style: AnyShapeStyle {
+    private func style(onProminentBackground: Bool) -> AnyShapeStyle {
         // On a selected row's accent fill the brand gradient washes out, so it follows
         // the row's text colour there instead. With Increase Contrast it's solid blue:
         // one flat colour reads more crisply than a gradient at this size.
-        if backgroundProminence == .increased { return AnyShapeStyle(.primary) }
+        if onProminentBackground { return AnyShapeStyle(.primary) }
         return contrast == .increased ? AnyShapeStyle(Brand.blue) : AnyShapeStyle(Brand.sparkle)
     }
 
     var body: some View {
-        Image(systemName: "sparkles")
-            .imageScale(.small)
-            .foregroundStyle(style)
-            .accessibilityLabel("Title by Apple Intelligence")
-            .help("Title by Apple Intelligence")
+        BackgroundProminenceReader { isProminent in
+            Image(systemName: "sparkles")
+                .imageScale(.small)
+                .foregroundStyle(style(onProminentBackground: isProminent))
+                .accessibilityLabel("Title by Apple Intelligence")
+                .help("Title by Apple Intelligence")
+        }
     }
 }

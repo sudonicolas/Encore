@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Owns the menu bar icon, the clipping popover, and the History/Settings windows.
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var openedPopoverAt: ContinuousClock.Instant?
     /// Set while this app closes the popover itself, which is never vetoed.
     private var closesOnRequest = false
+    private var recordingObserver: AnyCancellable?
     private let store = ClipboardStore.shared
     private let navigator = AppNavigator.shared
 
@@ -108,10 +110,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Encore's custom SF Symbols, from `Resources/Assets.xcassets`: `encore.mark` is
     /// the app icon's mark drawn at SF Symbols' own weights and optical size, so it sits
     /// beside system glyphs in the menu bar; `encore.mark.fill` is its solid form.
-    private func statusImage(_ symbol: String) -> NSImage? {
+    ///
+    /// Never nil: a status item with no image is an invisible square, and a menu-bar-only
+    /// app with an invisible icon looks as if it never launched. If the custom symbol
+    /// can't be read, or won't take a symbol configuration, the plain image or a system
+    /// clipboard symbol stands in.
+    private func statusImage(_ symbol: String) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        let image = NSImage(named: symbol)?.withSymbolConfiguration(config)
-        image?.isTemplate = true
+        let custom = NSImage(named: symbol)
+        let image = custom?.withSymbolConfiguration(config)
+            ?? custom
+            ?? NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: AppInfo.name)?
+                .withSymbolConfiguration(config)
+            ?? NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+                NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 3), xRadius: 3, yRadius: 3).stroke()
+                return true
+            }
+        image.isTemplate = true
         return image
     }
 
@@ -130,14 +145,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func observeRecordingState() {
-        withObservationTracking {
-            _ = store.isRecordingEnabled
-        } onChange: { [weak self] in
-            Task { @MainActor in
-                self?.updateStatusIcon()
-                self?.observeRecordingState()
+        // `@Published` reports a change before the property is set, so the icon is
+        // updated a turn later, when `updateStatusIcon` reads the new value.
+        recordingObserver = store.$isRecordingEnabled
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.updateStatusIcon() }
             }
-        }
     }
 
     /// Toggles the popover for accessibility presses (VoiceOver, Full Keyboard Access);
@@ -204,7 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// single use of the popover.
     private func makePopoverContent() -> NSViewController {
         // The content sets its own size, which grows with the Text Size setting.
-        let hosting = NSHostingController(rootView: MenuBarContentView().environment(store))
+        let hosting = NSHostingController(rootView: MenuBarContentView().environmentObject(store))
         hosting.sizingOptions = [.preferredContentSize]
         return hosting
     }
@@ -341,10 +356,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showHistoryWindow() {
         if historyWindowController == nil {
-            let hosting = NSHostingController(rootView: HistoryWindowView().environment(store))
-            // Let SwiftUI's toolbar, search field and navigation title drive the window chrome.
-            hosting.sceneBridgingOptions = [.toolbars, .title]
+            let hosting = NSHostingController(rootView: HistoryWindowView().environmentObject(store))
+            // Let SwiftUI's toolbar, search field and navigation title drive the window
+            // chrome. macOS 13 has no way to ask for that (see below), so the window gets
+            // a plain title there in case SwiftUI doesn't provide one.
+            if #available(macOS 14.0, *) {
+                hosting.sceneBridgingOptions = [.toolbars, .title]
+            }
             let window = NSWindow(contentViewController: hosting)
+            if #unavailable(macOS 14.0) {
+                window.title = "History"
+            }
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.toolbarStyle = .unified
             window.isReleasedWhenClosed = false
@@ -357,6 +379,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             historyWindowController = NSWindowController(window: window)
         }
         present(historyWindowController?.window)
+        if #unavailable(macOS 14.0) {
+            // macOS 13 can't be asked to bridge SwiftUI's toolbar into a window AppKit
+            // made. Later systems do it even unasked, so 13 probably does too, but if the
+            // window comes up with no toolbar, search and the actions would be nowhere:
+            // then HistoryWindowView draws them in its columns instead. Checked once the
+            // window has laid out, and again on each opening.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self, let window = self.historyWindowController?.window, window.isVisible else { return }
+                let hasToolbar = window.toolbar.map { !$0.items.isEmpty } ?? false
+                if self.navigator.historyUsesInlineToolbar == hasToolbar {
+                    self.navigator.historyUsesInlineToolbar = !hasToolbar
+                }
+            }
+        }
     }
 
     private func showSettingsWindow() {
@@ -374,7 +410,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func present(_ window: NSWindow?) {
         NSApp.setActivationPolicy(.regular)
         NSApp.unhide(nil)
-        NSApp.activate()
+        NSApp.activateCompat()
         window?.makeKeyAndOrderFront(nil)
     }
 }

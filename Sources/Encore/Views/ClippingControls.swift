@@ -80,7 +80,7 @@ struct ClippingCopyButton: View {
             )
             .labelStyle(.iconOnly)
             .foregroundStyle(showCheckmark ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-            .contentTransition(.symbolEffect(.replace))
+            .symbolReplaceTransition()
         }
         .help(hasSelection ? "Copy Selection" : "Copy to Clipboard")
         .accessibilityLabel(hasSelection ? "Copy Selection" : "Copy to Clipboard")
@@ -128,7 +128,7 @@ struct QuickCopyBadge: View {
 /// Toggles a clipping's pinned state.
 struct ClippingPinButton: View {
     let clipping: Clipping
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
 
     var body: some View {
         Button {
@@ -139,7 +139,7 @@ struct ClippingPinButton: View {
             Label(clipping.isPinned ? "Unpin" : "Pin", systemImage: clipping.isPinned ? "pin.fill" : "pin")
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.secondary)
-                .contentTransition(.symbolEffect(.replace))
+                .symbolReplaceTransition()
         }
         .help(clipping.isPinned ? "Unpin" : "Pin")
         .accessibilityInputLabels([clipping.isPinned ? "Unpin" : "Pin"])
@@ -152,7 +152,7 @@ struct ClippingDeleteButton: View {
     let clipping: Clipping
     var onDeleted: (() -> Void)?
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @Environment(\.undoManager) private var undoManager
 
     var body: some View {
@@ -246,7 +246,7 @@ struct ConfirmingButton: View {
                     .labelStyle(.iconOnly)
             }
             .adaptiveGlassButton()
-            .buttonBorderShape(.circle)
+            .roundButtonBorder()
         }
     }
 

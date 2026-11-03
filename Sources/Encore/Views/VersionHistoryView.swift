@@ -8,7 +8,7 @@ struct VersionHistoryView: View {
     var canRestore = true
     var onDone: () -> Void
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
 
     private var earlier: [TextVersion] {
         (clipping.versions ?? []).reversed()

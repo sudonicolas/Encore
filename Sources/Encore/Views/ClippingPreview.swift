@@ -10,8 +10,7 @@ import ImageIO
 /// front — text with TextKit, so wrapping and the cut-off are exact — which keeps showing
 /// a preview to a few milliseconds even for a very large clipping.
 @MainActor
-@Observable
-final class ClippingPreview {
+final class ClippingPreview: ObservableObject {
     /// What the screen leaves room for, and the user's Text Size.
     struct Limits {
         var maxWidth: CGFloat
@@ -48,7 +47,7 @@ final class ClippingPreview {
     /// Where an image or a file's picture is drawn; its pixels arrive in `image`.
     private(set) var imageSize: CGSize?
     /// Starts as the row's own small thumbnail, sharpened once the full picture is ready.
-    var image: NSImage?
+    @Published var image: NSImage?
     private(set) var files: [File] = []
     private(set) var footer: String?
     private(set) var footerHeight: CGFloat = 0
@@ -447,7 +446,7 @@ private struct PreviewTextView: NSViewRepresentable {
 /// The preview's content on a glass card. The window is exactly `preview.size`, so the
 /// card needs no layout negotiation with it.
 struct ClippingPreviewView: View {
-    let preview: ClippingPreview
+    @ObservedObject var preview: ClippingPreview
 
     var body: some View {
         VStack(alignment: .leading, spacing: ClippingPreview.spacing) {

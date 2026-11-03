@@ -30,7 +30,7 @@ struct ClippingRowView: View {
     /// Called when the pointer enters or leaves the row.
     var onHoverChange: (Bool) -> Void = { _ in }
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @Environment(\.undoManager) private var undoManager
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var isHovering = false

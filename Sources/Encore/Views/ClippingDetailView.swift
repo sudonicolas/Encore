@@ -9,7 +9,8 @@ import AppKit
 struct ClippingDetailView: View {
     let clipping: Clipping
     /// Streams Apple Intelligence results; owned by the host, whose menu starts them.
-    var runner: TextActionRunner? = nil
+    /// Hosts with no Apple Intelligence menu leave it at `.inactive`, which never runs.
+    @ObservedObject var runner: TextActionRunner = .inactive
     /// The active search query, if any — matching text is highlighted inline.
     var searchQuery: String = ""
     /// The user's current text selection, if any; the host's copy button reads this to
@@ -24,7 +25,7 @@ struct ClippingDetailView: View {
     /// (see `metadataItems`).
     private static let exactCountLimit = 500_000
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @State private var showsVersions = false
     /// The text the lookups work on: it trails what's typed, so a lookup isn't sent for
     /// every keystroke.
@@ -38,7 +39,7 @@ struct ClippingDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         // A scroll-edge bar (not a divider + material strip): content blurs softly
-        // beneath it as it scrolls on macOS 26, and a plain material strip on 15.
+        // beneath it as it scrolls on macOS 26, and a plain material strip before it.
         .adaptiveSafeAreaBar(edge: .bottom) {
             metadata
         }
@@ -58,7 +59,7 @@ struct ClippingDetailView: View {
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 16) {
-                    if let runner, runner.isActive {
+                    if runner.isActive {
                         TextActionResultCard(runner: runner)
                             .motionSafeTransition(.move(edge: .top).combined(with: .opacity))
                     }
@@ -98,7 +99,7 @@ struct ClippingDetailView: View {
                             .id(lookedUp)
                     }
                 }
-                .animation(.snappy(duration: 0.25).motionSafe, value: runner?.isActive)
+                .animation(.snappy(duration: 0.25).motionSafe, value: runner.isActive)
                 .task(id: text) {
                     guard (try? await Task.sleep(for: .seconds(0.8))) != nil else { return }
                     lookupText = text
@@ -115,7 +116,7 @@ struct ClippingDetailView: View {
                     .accessibilityIgnoresInvertColors()
                     .accessibilityLabel(clipping.accessibilityTitle(smartTitle: nil))
             } else {
-                Label("Image unavailable", systemImage: "photo.badge.exclamationmark")
+                Label("Image unavailable", systemImage: SymbolName.imageUnavailable)
                     .foregroundStyle(.secondary)
             }
 
@@ -154,7 +155,7 @@ struct ClippingDetailView: View {
                     showsVersions = true
                 } label: {
                     Label(versions.count == 1 ? "1 version" : "\(versions.count) versions",
-                          systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                          systemImage: SymbolName.versionHistory)
                         .labelStyle(.titleAndIcon)
                         .lineLimit(1)
                 }
@@ -245,7 +246,7 @@ private struct FileRow: View {
                             .underline()
                     }
                     .buttonStyle(.plain)
-                    .pointerStyle(.link)
+                    .linkPointer()
                     .scaledFont(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

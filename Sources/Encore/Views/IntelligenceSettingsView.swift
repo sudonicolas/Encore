@@ -3,11 +3,10 @@ import SwiftUI
 /// Settings for the features that go beyond recording: Apple Intelligence (on device) and
 /// online lookups (free web services, sent only what's needed).
 struct IntelligenceSettingsView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @State private var status = Intelligence.status
 
     var body: some View {
-        @Bindable var store = store
         Form {
             Section {
                 LabeledContent("Status") {
@@ -45,7 +44,7 @@ struct IntelligenceSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
+        .scrollDisabledWhereSizedToFit()
         .frame(width: 520, height: status == .available ? 360 : 410)
         .onAppear { status = Intelligence.status }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
