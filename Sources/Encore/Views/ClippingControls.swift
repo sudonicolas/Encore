@@ -35,6 +35,43 @@ private struct IconButtonBody: View {
     }
 }
 
+/// One size for the icons inside a row of glass buttons. A glass circle wraps its label, so
+/// without this a narrow glyph (sparkles) makes a smaller circle than a wide one (trash).
+/// Set `glassIconSide` on the row; `glassIconFrame()` on each label does the rest. Toolbars
+/// leave it unset and size themselves.
+enum GlassIconMetrics {
+    /// The smallest width and height of an icon in the popover's header buttons.
+    static let side: CGFloat = 18
+}
+
+private struct GlassIconSideKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    var glassIconSide: CGFloat? {
+        get { self[GlassIconSideKey.self] }
+        set { self[GlassIconSideKey.self] = newValue }
+    }
+}
+
+private struct GlassIconFrame: ViewModifier {
+    @Environment(\.glassIconSide) private var side
+
+    func body(content: Content) -> some View {
+        if let side {
+            content.frame(minWidth: side, minHeight: side)
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Gives a glass button's label the row's shared icon size, if the row sets one.
+    func glassIconFrame() -> some View { modifier(GlassIconFrame()) }
+}
+
 /// Copies a clipping to the pasteboard without creating a new history entry; the icon
 /// flips to a checkmark briefly to confirm. When `textOverride` is non-empty (the user
 /// has an active selection in the detail screen's text), copies just that substring
@@ -81,6 +118,7 @@ struct ClippingCopyButton: View {
             .labelStyle(.iconOnly)
             .foregroundStyle(showCheckmark ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             .contentTransition(.symbolEffect(.replace))
+            .glassIconFrame()
         }
         .help(hasSelection ? "Copy Selection" : "Copy to Clipboard")
         .accessibilityLabel(hasSelection ? "Copy Selection" : "Copy to Clipboard")
@@ -140,6 +178,7 @@ struct ClippingPinButton: View {
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.secondary)
                 .contentTransition(.symbolEffect(.replace))
+                .glassIconFrame()
         }
         .help(clipping.isPinned ? "Unpin" : "Pin")
         .accessibilityInputLabels([clipping.isPinned ? "Unpin" : "Pin"])
@@ -165,6 +204,7 @@ struct ClippingDeleteButton: View {
             Label("Delete", systemImage: "trash")
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.secondary)
+                .glassIconFrame()
         }
         .help("Move to Recently Deleted")
         .accessibilityInputLabels(["Delete", "Move to Recently Deleted", "Trash"])

@@ -28,6 +28,17 @@ extension View {
         }
     }
 
+    /// The button menu style on macOS 15, where the popover's buttons are hand-drawn.
+    /// On 26 and later the popover's glass sparkles button is built in IntelligenceMenu.
+    @ViewBuilder
+    func adaptiveGlassMenu() -> some View {
+        if #available(macOS 26.0, *) {
+            self
+        } else {
+            menuStyle(.button)
+        }
+    }
+
     @ViewBuilder
     func adaptiveGlassCapsule() -> some View {
         if #available(macOS 26.0, *) {
