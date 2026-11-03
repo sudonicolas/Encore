@@ -31,6 +31,9 @@ final class ClippingPreviewController {
     private var hideGeneration = 0
 
     private var isShown: Bool { panel?.isVisible == true && current != nil }
+
+    /// Where the preview card is on screen while it shows.
+    var frameOnScreen: NSRect? { panel?.isVisible == true ? panel?.frame : nil }
     private var animates: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     private init() {}

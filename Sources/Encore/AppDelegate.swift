@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set while this app closes the popover itself, which is never vetoed.
     private var closesOnRequest = false
     private var recordingObserver: AnyCancellable?
+    /// An invisible 1 pt window the popover hangs from while the icon is not on screen.
+    private var fallbackAnchor: NSWindow?
     private let store = ClipboardStore.shared
     private let navigator = AppNavigator.shared
 
@@ -240,12 +242,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A status-item click is an explicit request to use it again, so restore and
         // activate the app before showing a window that needs to receive clicks.
         NSApp.unhide(nil)
+        // The forceful form on purpose: `activate()` defers to the frontmost app, and the
+        // popover then often came up in an app that wasn't active (keyboard-check fails).
         NSApp.activate(ignoringOtherApps: true)
         openedPopoverAt = .now
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        if let anchor = anchorForPopover(button) {
+            popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
         popover.contentViewController?.view.window?.makeKey()
         ClippingPreviewController.shared.anchorView = popover.contentViewController?.view
+        // Activation can still not land (macOS 14 and later treat it as a request). A
+        // popover up in an app that isn't active gets no pointer tracking: no hover
+        // preview, no hover buttons. If so, ask once more once the popover is up.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self, let popover = self.popover, popover.isShown, !self.popoverIsClosing, !NSApp.isActive
+            else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.window?.makeKey()
+        }
         // On the next turn of the run loop, not now: `makePopoverContent` builds a brand
         // new view for every open, and a notification posted while that view is still
         // being mounted can arrive before it has subscribed — which left the cursor out
@@ -258,6 +275,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         closeOnClickElsewhere()
     }
 
+    /// macOS drops a status item it has no room for (a full menu bar, the notch, an app
+    /// that hides menu bar icons) off the edge of the screen, and a popover anchored to
+    /// it then opens in the top-left corner, nowhere near where anyone is looking. When the
+    /// icon isn't really on a screen, hang the popover from the top-right instead, where
+    /// the menu extras are. Nil when the icon is where it should be.
+    private func anchorForPopover(_ button: NSStatusBarButton) -> NSView? {
+        if let frame = button.window?.frame, button.window?.isVisible == true,
+           NSScreen.screens.contains(where: { $0.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
+                                              && frame.midX > $0.frame.minX + 60 }) {
+            return nil
+        }
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return nil }
+        let size = NSSize(width: 1, height: 1)
+        let origin = NSPoint(x: screen.visibleFrame.maxX - 40, y: screen.visibleFrame.maxY - size.height)
+        let anchor = fallbackAnchor ?? {
+            let window = NSWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: true)
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.hasShadow = false
+            window.ignoresMouseEvents = true
+            window.isReleasedWhenClosed = false
+            window.collectionBehavior = [.transient, .ignoresCycle, .fullScreenAuxiliary]
+            window.contentView = NSView()
+            fallbackAnchor = window
+            return window
+        }()
+        anchor.level = .statusBar
+        anchor.setFrame(NSRect(origin: origin, size: size), display: false)
+        anchor.orderFrontRegardless()
+        return anchor.contentView
+    }
+
     /// Closes the popover on a click anywhere outside the app: the desktop, empty menu
     /// bar space, another app. The transient popover closes when the app resigns
     /// active, but not every such click takes activation away.
@@ -267,10 +316,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let location = NSEvent.mouseLocation
             Task { @MainActor in
                 // Clicks on the icon can come through here too; the click monitor has them.
-                guard let self, self.statusItem?.button?.window?.frame.contains(location) != true else { return }
+                guard let self, self.statusItem?.button?.window?.frame.contains(location) != true,
+                      !self.isInsidePopover(location) else { return }
                 self.closePopover()
             }
         }
+    }
+
+    /// Whether a screen point is on the popover or its hover preview. A click there is
+    /// never "elsewhere", however macOS routed it: the preview lets clicks through to the
+    /// window behind it, and a page change can swap the clicked view out mid-click.
+    private func isInsidePopover(_ location: NSPoint) -> Bool {
+        if let window = popover?.contentViewController?.view.window, window.frame.contains(location) { return true }
+        return ClippingPreviewController.shared.frameOnScreen?.contains(location) == true
     }
 
     private func closePopover(animated: Bool = true) {
@@ -463,7 +521,16 @@ extension AppDelegate: NSPopoverDelegate {
     /// Either way, keep the popover open and take activation back. Clicks elsewhere
     /// still close it through `closeOnClickElsewhere`, which is never vetoed.
     func popoverShouldClose(_ popover: NSPopover) -> Bool {
-        guard !NSApp.isActive, !closesOnRequest else { return true }
+        if closesOnRequest { return true }
+        // A click on the popover itself never closes it. AppKit can misread one as a
+        // click outside when the view under the pointer goes away mid-click, which is
+        // exactly what opening a clipping's details does to its row.
+        if let event = NSApp.currentEvent,
+           [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp].contains(event.type),
+           isInsidePopover(NSEvent.mouseLocation) {
+            return false
+        }
+        guard !NSApp.isActive else { return true }
         let recentlyReopened = focusHandedBackAt.map { $0.duration(to: .now) < .seconds(1.5) } ?? false
         let justShown = openedPopoverAt.map { $0.duration(to: .now) < .seconds(1) } ?? false
         guard recentlyReopened || justShown else { return true }
@@ -484,6 +551,7 @@ extension AppDelegate: NSPopoverDelegate {
         // Settle any text being edited, and let the closed view go.
         store.finishAllEditing()
         popover?.contentViewController = nil
+        fallbackAnchor?.orderOut(nil)
         if let outsideClickMonitor {
             NSEvent.removeMonitor(outsideClickMonitor)
             self.outsideClickMonitor = nil

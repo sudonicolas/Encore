@@ -38,10 +38,9 @@ struct MenuBarContentView: View {
     }
 
     private var filtered: [Clipping] {
-        guard !searchText.isEmpty else { return store.clippings }
-        return store.clippings.filter {
-            $0.searchableText.localizedCaseInsensitiveContains(searchText)
-        }
+        let query = SearchQuery(searchText)
+        guard !query.isEmpty else { return store.clippings }
+        return store.clippings.filter { query.matches($0.searchableText) }
     }
 
     private var pinned: [Clipping] {
@@ -90,6 +89,7 @@ struct MenuBarContentView: View {
             }
         }
         .frame(width: popoverSize.width, height: popoverSize.height)
+        .solidOnLegacyMacOS()
         // At the root, not on the list page: deleting from the detail page returns to
         // the list, and the toast must survive that page swap.
         .trashUndoToast(bottomPadding: 62)
@@ -294,9 +294,11 @@ struct MenuBarContentView: View {
                 onCopy: copy,
                 onOpen: openDetail,
                 onHoverChange: { hovering in
-                    if hovering {
+                    // Not while the list slides away to another page, when rows pass
+                    // under a pointer that isn't moving.
+                    if hovering, page == .list {
                         preview.pointerEntered(clipping, query: searchText)
-                    } else {
+                    } else if !hovering {
                         preview.pointerExited(clipping.id)
                     }
                 }

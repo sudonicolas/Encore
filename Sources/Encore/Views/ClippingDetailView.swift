@@ -93,10 +93,12 @@ struct ClippingDetailView: View {
                         }
                         .help(isEditable ? "Click to edit. \u{2318}Z undoes and \u{21e7}\u{2318}Z redoes." : "")
                     }
-                    if store.offersOnlineLookups, !text.isEmpty {
+                    // Conversions of units are offline, so the section stays without online
+                    // lookups; it then offers nothing else.
+                    if !text.isEmpty {
                         let lookedUp = lookupText ?? text
-                        LookupsSection(text: lookedUp)
-                            .id(lookedUp)
+                        LookupsSection(text: lookedUp, online: store.offersOnlineLookups)
+                            .id("\(store.offersOnlineLookups)\(lookedUp)")
                     }
                 }
                 .animation(.snappy(duration: 0.25).motionSafe, value: runner.isActive)

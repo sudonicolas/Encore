@@ -85,7 +85,7 @@ extension View {
             safeAreaInset(edge: edge, spacing: 0) {
                 content()
                     .frame(maxWidth: .infinity)
-                    .background(.regularMaterial)
+                    .background(.bar)
             }
         }
     }
@@ -164,6 +164,18 @@ extension View {
             buttonBorderShape(circle ? .circle : .capsule)
         } else {
             self
+        }
+    }
+
+    /// Before macOS 26 the popover is a solid panel. Its own translucent material was
+    /// being stacked with the bars' materials and the wallpaper behind it, and the result
+    /// was muddy, with a visibly different shade band at the top and bottom.
+    @ViewBuilder
+    func solidOnLegacyMacOS() -> some View {
+        if #available(macOS 26.0, *) {
+            self
+        } else {
+            background(Color(nsColor: .windowBackgroundColor))
         }
     }
 

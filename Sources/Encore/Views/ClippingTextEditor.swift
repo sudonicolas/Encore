@@ -261,20 +261,21 @@ private struct EditorRepresentable: NSViewRepresentable {
             for key in [NSAttributedString.Key.backgroundColor, .foregroundColor, .underlineStyle] {
                 layoutManager.removeTemporaryAttribute(key, forCharacterRange: whole)
             }
-            let query = parent.highlightQuery
-            guard !query.isEmpty else { return }
-            var search = whole
-            while search.length > 0 {
-                let found = string.range(of: query, options: .caseInsensitive, range: search)
-                guard found.location != NSNotFound, found.length > 0 else { break }
-                // Same treatment as list rows (see Text.highlighting).
-                layoutManager.addTemporaryAttribute(.backgroundColor, value: NSColor.findHighlightColor, forCharacterRange: found)
-                layoutManager.addTemporaryAttribute(.foregroundColor, value: NSColor.black, forCharacterRange: found)
-                if parent.underlinesMatches {
-                    layoutManager.addTemporaryAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, forCharacterRange: found)
+            // Matched as the list matched it (see SearchQuery), each word on its own.
+            for term in SearchQuery(parent.highlightQuery).terms {
+                var search = whole
+                while search.length > 0 {
+                    let found = string.range(of: term, options: SearchQuery.options, range: search)
+                    guard found.location != NSNotFound, found.length > 0 else { break }
+                    // Same treatment as list rows (see Text.highlighting).
+                    layoutManager.addTemporaryAttribute(.backgroundColor, value: NSColor.findHighlightColor, forCharacterRange: found)
+                    layoutManager.addTemporaryAttribute(.foregroundColor, value: NSColor.black, forCharacterRange: found)
+                    if parent.underlinesMatches {
+                        layoutManager.addTemporaryAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, forCharacterRange: found)
+                    }
+                    let next = found.location + found.length
+                    search = NSRange(location: next, length: whole.length - next)
                 }
-                let next = found.location + found.length
-                search = NSRange(location: next, length: whole.length - next)
             }
         }
 

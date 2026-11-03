@@ -30,8 +30,9 @@ struct HistoryWindowView: View {
     }
 
     private var items: [Clipping] {
-        guard !searchText.isEmpty else { return sectionItems }
-        return sectionItems.filter { $0.searchableText.localizedCaseInsensitiveContains(searchText) }
+        let query = SearchQuery(searchText)
+        guard !query.isEmpty else { return sectionItems }
+        return sectionItems.filter { query.matches($0.searchableText) }
     }
 
     var body: some View {
