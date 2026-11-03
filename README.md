@@ -12,7 +12,7 @@
 ---
 
 Encore keeps everything you copy (text, images and files) one click away in the menu bar.
-It's built with SwiftUI and AppKit for macOS 15 and later, with Liquid Glass on macOS 26+.
+It's built with SwiftUI and AppKit for macOS 13 and later, with Liquid Glass on macOS 26+.
 It's fast and stays out of the way. On supported Macs with macOS 26+, long clippings get a
 short title written on your Mac by Apple Intelligence, and text can be proofread,
 rewritten, summarized or explained without leaving the menu bar.
@@ -109,7 +109,7 @@ Free and open source. No account, no subscription, no cloud.
 - **Voice Control**: every button has a speakable name.
 - **Keyboard**: ⇧⌘V opens and closes the popover from any app. In it the top clipping is
   already highlighted, so Return copies straight away; ↑ and ↓ move the highlight, ⌘↓
-  opens a clipping (⌘↑ goes back), and ⌥⁉1 through ⌥⁉0 copy one of the first ten
+  or → opens a clipping (⌘↑ or ← goes back), and ⌥⁉1 through ⌥⁉0 copy one of the first ten
   outright. Escape steps back one layer at a time: it leaves a clipping's text, then the
   page, then clears the search, and only then closes the popover. These work wherever the
   cursor happens to be.
@@ -138,7 +138,7 @@ The full policy is in [PRIVACY.md](PRIVACY.md).
 
 ## Requirements
 
-- macOS 15 or later.
+- macOS 13 or later.
 - For Apple Intelligence features: macOS 26 or later and a Mac that supports Apple
   Intelligence, with it turned on in System Settings → Apple Intelligence & Siri.
 

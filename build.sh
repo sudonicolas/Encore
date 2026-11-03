@@ -94,12 +94,18 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
-# SwiftPM stamps the binary's "built with SDK" field with the deployment target (15.0)
+# SwiftPM stamps the binary's "built with SDK" field with the deployment target (13.0)
 # instead of the SDK that really built it. macOS 26 and later read that field to decide
-# whether an app gets the current look, and an app claiming SDK 15 is given the old
+# whether an app gets the current look, and an app claiming SDK 13 is given the old
 # pre-Liquid Glass chrome, however many #available(macOS 26) branches it has. Restamp it
-# with the real SDK; the deployment target stays 15.0, so macOS 15 still runs the app.
+# with the real SDK; the deployment target stays 13.0, so macOS 13 still runs the app.
 DEPLOYMENT_TARGET="$(plutil -extract LSMinimumSystemVersion raw "$INFO_PLIST")"
+# Package.swift says the same thing in its own terms; the two must not drift apart.
+PACKAGE_TARGET="$(sed -n 's/.*\.macOS(\.v\([0-9][0-9]*\)).*/\1/p' "$ROOT_DIR/Package.swift")"
+if [ "$PACKAGE_TARGET.0" != "$DEPLOYMENT_TARGET" ]; then
+    echo "Package.swift targets macOS $PACKAGE_TARGET, but Info.plist's LSMinimumSystemVersion is $DEPLOYMENT_TARGET." >&2
+    exit 1
+fi
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 vtool -set-build-version macos "$DEPLOYMENT_TARGET" "$SDK_VERSION" -replace \
     -output "$APP_BUNDLE/Contents/MacOS/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
@@ -118,7 +124,7 @@ cp "$ROOT_DIR/Resources/container-migration.plist" "$APP_BUNDLE/Contents/Resourc
 
 # The icon is an Icon Composer document (layered Liquid Glass artwork). actool compiles
 # it into Assets.car — which macOS 26 renders live in light, dark, clear and tinted
-# appearances — plus an AppIcon.icns fallback, which is what macOS 15 uses. The same
+# appearances — plus an AppIcon.icns fallback, which is what macOS 13 to 15 use. The same
 # Assets.car carries Encore's custom SF Symbols (the menu bar mark) from
 # Resources/Assets.xcassets, so actool runs whether or not the icns path is needed.
 echo "==> Compiling app icon and symbols..."
@@ -127,7 +133,7 @@ ACTOOL_STATUS=0
 ACTOOL_OUTPUT="$(xcrun actool "$ICON_SOURCE" "$ASSET_SOURCE" \
     --compile "$APP_BUNDLE/Contents/Resources" \
     --platform macosx \
-    --minimum-deployment-target 15.0 \
+    --minimum-deployment-target "$DEPLOYMENT_TARGET" \
     --app-icon AppIcon \
     --output-partial-info-plist "$PARTIAL_PLIST" \
     --output-format human-readable-text \

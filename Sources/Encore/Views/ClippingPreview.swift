@@ -10,8 +10,7 @@ import ImageIO
 /// front — text with TextKit, so wrapping and the cut-off are exact — which keeps showing
 /// a preview to a few milliseconds even for a very large clipping.
 @MainActor
-@Observable
-final class ClippingPreview {
+final class ClippingPreview: ObservableObject {
     /// What the screen leaves room for, and the user's Text Size.
     struct Limits {
         var maxWidth: CGFloat
@@ -48,7 +47,7 @@ final class ClippingPreview {
     /// Where an image or a file's picture is drawn; its pixels arrive in `image`.
     private(set) var imageSize: CGSize?
     /// Starts as the row's own small thumbnail, sharpened once the full picture is ready.
-    var image: NSImage?
+    @Published var image: NSImage?
     private(set) var files: [File] = []
     private(set) var footer: String?
     private(set) var footerHeight: CGFloat = 0
@@ -431,15 +430,10 @@ private struct PreviewTextView: NSViewRepresentable {
         return view
     }
 
-    /// The same clipping previewed again after the search query or the card's width
-    /// changed arrives as a fresh `PreviewText` — new storage, new container — under the
-    /// same id. Without this the old layout stays on screen, e.g. still showing search
-    /// highlighting for a query that has since been cleared.
-    func updateNSView(_ nsView: NSTextView, context: Context) {
-        guard nsView.textContainer !== text.container else { return }
-        nsView.replaceTextContainer(text.container)
-        nsView.frame = NSRect(origin: .zero, size: text.usedSize)
-    }
+    /// Nothing to update: a fresh `PreviewText` (new storage, new container) gets a fresh
+    /// text view, because the view is keyed on the container (see `ClippingPreviewView`).
+    /// Swapping the container of a live NSTextView left the text blank.
+    func updateNSView(_ nsView: NSTextView, context: Context) {}
 }
 
 // MARK: - View
@@ -447,7 +441,7 @@ private struct PreviewTextView: NSViewRepresentable {
 /// The preview's content on a glass card. The window is exactly `preview.size`, so the
 /// card needs no layout negotiation with it.
 struct ClippingPreviewView: View {
-    let preview: ClippingPreview
+    @ObservedObject var preview: ClippingPreview
 
     var body: some View {
         VStack(alignment: .leading, spacing: ClippingPreview.spacing) {
@@ -465,7 +459,7 @@ struct ClippingPreviewView: View {
             }
             if let text = preview.text {
                 PreviewTextView(text: text)
-                    .id(preview.clippingID)
+                    .id(ObjectIdentifier(text.container))
                     .frame(width: preview.size.width - 2 * ClippingPreview.padding, height: text.usedSize.height, alignment: .topLeading)
                     .mask { fade }
             }

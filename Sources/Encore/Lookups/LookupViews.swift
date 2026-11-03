@@ -6,15 +6,18 @@ import AppKit
 /// phrase only when clicked.
 struct LookupsSection: View {
     let text: String
+    /// Whether online lookups are on. Unit conversions are offline and show either way.
+    var online = true
 
     @Environment(\.textScale) private var textScale
     @State private var candidates: LookupCandidates
     @State private var definition: LookupState<WordDefinition> = .idle
     @State private var article: LookupState<WikipediaSummary> = .idle
 
-    init(text: String) {
+    init(text: String, online: Bool = true) {
         self.text = text
-        _candidates = State(initialValue: LookupCandidates(text: text))
+        self.online = online
+        _candidates = State(initialValue: LookupCandidates(text: text, online: online))
     }
 
     var body: some View {
@@ -22,6 +25,9 @@ struct LookupsSection: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let money = candidates.money {
                     CurrencyCard(amount: money)
+                }
+                if let unit = candidates.unit {
+                    UnitCard(amount: unit)
                 }
                 if definition.isIdle || article.isIdle {
                     buttons
@@ -301,30 +307,76 @@ private struct CurrencyCard: View {
     }
 }
 
+/// A weight, length, temperature, volume or speed in other units. Computed on this Mac;
+/// click a row to copy it.
+private struct UnitCard: View {
+    let amount: UnitAmount
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label {
+                Text("\(amount.displayText) is")
+            } icon: {
+                Image(systemName: "ruler")
+            }
+            .scaledFont(.headline)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityLabel("\(amount.spokenText) is")
+
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(amount.conversions) { conversion in
+                    CopyableAmountRow(
+                        value: conversion.formatted,
+                        label: conversion.symbol,
+                        copyText: conversion.copyText,
+                        spoken: conversion.spoken
+                    )
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.primary.opacity(0.04), in: .continuous(UIRadius.card))
+        .increasedContrastBorder(RoundedRectangle(cornerRadius: UIRadius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+}
+
 private struct ConvertedAmountRow: View {
     let value: Decimal
     let currency: String
+
+    private var formatted: String { value.formatted(.currency(code: currency)) }
+
+    var body: some View {
+        // "€1,193.12, Euro" rather than the code spelled out letter by letter.
+        CopyableAmountRow(
+            value: formatted,
+            label: currency,
+            copyText: formatted,
+            spoken: [formatted, Locale.current.localizedString(forCurrencyCode: currency)].accessibilityJoined
+        )
+    }
+}
+
+/// One converted amount: big number, small unit, click to copy.
+private struct CopyableAmountRow: View {
+    let value: String
+    let label: String
+    let copyText: String
+    let spoken: String
 
     @State private var isHovering = false
     @State private var showCopied = false
     @State private var copiedTask: Task<Void, Never>?
 
-    private var formatted: String {
-        value.formatted(.currency(code: currency))
-    }
-
-    /// "€1,193.12, Euro" rather than the code spelled out letter by letter.
-    private var spokenLabel: String {
-        [formatted, Locale.current.localizedString(forCurrencyCode: currency)].accessibilityJoined
-    }
-
     var body: some View {
         Button(action: copy) {
             HStack(spacing: 8) {
-                Text(formatted)
+                Text(value)
                     .scaledFont(.title3, weight: .semibold)
                     .monospacedDigit()
-                Text(currency)
+                Text(label)
                     .scaledFont(.caption, weight: .medium)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
@@ -341,8 +393,8 @@ private struct ConvertedAmountRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .help("Copy \(formatted)")
-        .accessibilityLabel(spokenLabel)
+        .help("Copy \(copyText)")
+        .accessibilityLabel(spoken)
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
         }
@@ -352,7 +404,7 @@ private struct ConvertedAmountRow: View {
     private func copy() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(formatted, forType: .string)
+        pasteboard.setString(copyText, forType: .string)
         AssistiveTech.announce("Copied")
         copiedTask?.cancel()
         withAnimation(.snappy(duration: 0.2).motionSafe) { showCopied = true }

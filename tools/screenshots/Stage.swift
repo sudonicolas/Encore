@@ -362,7 +362,7 @@ final class Stage {
         popover.behavior = .applicationDefined
         popover.animates = false
         popover.contentSize = NSSize(width: 360, height: 480)
-        popover.contentViewController = NSHostingController(rootView: MenuBarContentView().environment(store))
+        popover.contentViewController = NSHostingController(rootView: MenuBarContentView().environmentObject(store))
         NotificationCenter.default.post(name: .clipboardPopoverWillShow, object: nil)
         popover.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
         popover.contentViewController?.view.window?.level = Self.popoverLevel
@@ -377,7 +377,7 @@ final class Stage {
     func openHistory(frame: CGRect, section: HistorySection = .all, search: String = "") async throws -> NSWindow {
         AppNavigator.shared.historySection = section
         AppNavigator.shared.historySearch = search
-        let hosting = NSHostingController(rootView: HistoryWindowView().environment(store))
+        let hosting = NSHostingController(rootView: HistoryWindowView().environmentObject(store))
         hosting.sceneBridgingOptions = [.toolbars, .title]
         let window = StageWindow(contentViewController: hosting)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]

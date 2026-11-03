@@ -72,6 +72,25 @@ private final class EditorTextView: NSTextView {
         return super.performKeyEquivalent(with: event)
     }
 
+    /// The text wraps at exactly the view's width. `widthTracksTextView` is meant to see to
+    /// that, but it only follows frame changes: on macOS 15 a container left at another
+    /// width stayed there, and the text wrapped every few letters.
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        keepTextAtViewWidth()
+    }
+
+    override func layout() {
+        super.layout()
+        keepTextAtViewWidth()
+    }
+
+    private func keepTextAtViewWidth() {
+        let width = bounds.width - 2 * textContainerInset.width
+        guard width > 0, let container = textContainer, container.containerSize.width != width else { return }
+        container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+    }
+
     /// Escape leaves the text first; a second Escape then goes Back. PopoverKeyHandler
     /// normally gets there first, so this is the fallback for the History window, where
     /// there is no popover key router.
@@ -132,12 +151,18 @@ private struct EditorRepresentable: NSViewRepresentable {
         context.coordinator.apply(to: nsView, parent: self)
     }
 
+    /// Measured on a layout of its own (see `Coordinator.measuringLayout`), never the one
+    /// on screen: SwiftUI asks about several widths before it settles, some of them very
+    /// narrow, and resizing the visible text container for each left the text wrapped at
+    /// whichever width came last. macOS 15 asks in an order where that was a few letters.
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width.isFinite, width > 0,
-              let container = nsView.textContainer, let layoutManager = nsView.layoutManager else {
+              let (layoutManager, container) = context.coordinator.measuringLayout(for: nsView) else {
             return nil
         }
-        container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+        if container.containerSize.width != width {
+            container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+        }
         layoutManager.ensureLayout(for: container)
         let used = layoutManager.usedRect(for: container).height
         let extra = layoutManager.extraLineFragmentRect.maxY
@@ -164,6 +189,23 @@ private struct EditorRepresentable: NSViewRepresentable {
         }
 
         func undoManager(for view: NSTextView) -> UndoManager? { undoManager }
+
+        private var measurer: (NSLayoutManager, NSTextContainer)?
+
+        /// A second, invisible layout of the same text storage, for `sizeThatFits` to
+        /// try widths on. It sees every edit as it happens, and the text on screen keeps
+        /// following the view's own width.
+        func measuringLayout(for textView: NSTextView) -> (NSLayoutManager, NSTextContainer)? {
+            if let measurer { return measurer }
+            guard let storage = textView.textStorage else { return nil }
+            let layoutManager = NSLayoutManager()
+            let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+            container.lineFragmentPadding = textView.textContainer?.lineFragmentPadding ?? 0
+            layoutManager.addTextContainer(container)
+            storage.addLayoutManager(layoutManager)
+            measurer = (layoutManager, container)
+            return measurer
+        }
 
         /// Brings the view in line with SwiftUI's state without disturbing the user:
         /// text only when it really differs (an external change such as restoring a
@@ -219,20 +261,21 @@ private struct EditorRepresentable: NSViewRepresentable {
             for key in [NSAttributedString.Key.backgroundColor, .foregroundColor, .underlineStyle] {
                 layoutManager.removeTemporaryAttribute(key, forCharacterRange: whole)
             }
-            let query = parent.highlightQuery
-            guard !query.isEmpty else { return }
-            var search = whole
-            while search.length > 0 {
-                let found = string.range(of: query, options: .caseInsensitive, range: search)
-                guard found.location != NSNotFound, found.length > 0 else { break }
-                // Same treatment as list rows (see Text.highlighting).
-                layoutManager.addTemporaryAttribute(.backgroundColor, value: NSColor.findHighlightColor, forCharacterRange: found)
-                layoutManager.addTemporaryAttribute(.foregroundColor, value: NSColor.black, forCharacterRange: found)
-                if parent.underlinesMatches {
-                    layoutManager.addTemporaryAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, forCharacterRange: found)
+            // Matched as the list matched it (see SearchQuery), each word on its own.
+            for term in SearchQuery(parent.highlightQuery).terms {
+                var search = whole
+                while search.length > 0 {
+                    let found = string.range(of: term, options: SearchQuery.options, range: search)
+                    guard found.location != NSNotFound, found.length > 0 else { break }
+                    // Same treatment as list rows (see Text.highlighting).
+                    layoutManager.addTemporaryAttribute(.backgroundColor, value: NSColor.findHighlightColor, forCharacterRange: found)
+                    layoutManager.addTemporaryAttribute(.foregroundColor, value: NSColor.black, forCharacterRange: found)
+                    if parent.underlinesMatches {
+                        layoutManager.addTemporaryAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, forCharacterRange: found)
+                    }
+                    let next = found.location + found.length
+                    search = NSRange(location: next, length: whole.length - next)
                 }
-                let next = found.location + found.length
-                search = NSRange(location: next, length: whole.length - next)
             }
         }
 

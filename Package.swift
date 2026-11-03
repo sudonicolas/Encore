@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "Encore",
     platforms: [
-        .macOS(.v15)
+        .macOS(.v13)
     ],
     targets: [
         .executableTarget(

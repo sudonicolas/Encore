@@ -6,7 +6,8 @@ struct EncoreApp: App {
     // needed so right-clicking the menu bar icon can show a different menu than a
     // left click, which `MenuBarExtra` alone can't distinguish.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let store = ClipboardStore.shared
+    // Observed, so the Text Size items enable and disable as the size changes.
+    @ObservedObject private var store = ClipboardStore.shared
 
     var body: some Scene {
         // Placeholder scene; the real Settings window is AppKit-built (see

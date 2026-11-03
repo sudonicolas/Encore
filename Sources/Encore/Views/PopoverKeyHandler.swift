@@ -11,6 +11,11 @@ enum PopoverKey: Equatable {
     case moveDown
     /// \u{2318}\u{2193}: show the highlighted clipping's details.
     case openDetail
+    /// \u{2192}: the same as \u{2318}\u{2193}, but only when it would not have moved the
+    /// caret in the search field.
+    case drillIn
+    /// \u{2190}: back out of a page. Never taken on the list, where it moves the caret.
+    case back
     /// \u{2325}1 through \u{2325}0, as a zero-based row index.
     case quickSlot(Int)
     /// A plain character on its way to the search field.
@@ -116,6 +121,14 @@ final class KeyMonitorView: NSView {
             return handle(.moveDown)
         case (Self.upArrow, []):
             return handle(.moveUp)
+        case (Self.rightArrow, []):
+            // In the search field → is a caret move unless the caret is already at the
+            // end of the text, where it does nothing and is free to open the row.
+            return isCaretAtEndOfSearchText ? handle(.drillIn) : false
+        case (Self.leftArrow, []):
+            // Not while a search field holds focus: ← there is a caret move, and the
+            // list page never takes it anyway.
+            return isSearchFieldFocused ? false : handle(.back)
         default:
             break
         }
@@ -152,9 +165,28 @@ final class KeyMonitorView: NSView {
         return textView.isEditable && !textView.isFieldEditor
     }
 
+    /// The search field's field editor, when it has focus.
+    private var searchFieldEditor: NSTextView? {
+        guard let textView = window?.firstResponder as? NSTextView, textView.isFieldEditor else { return nil }
+        return textView
+    }
+
+    private var isSearchFieldFocused: Bool { searchFieldEditor != nil }
+
+    /// True when → would do nothing in the search field: nothing has focus there, or the
+    /// caret sits after the last character with no selection and no text being composed.
+    private var isCaretAtEndOfSearchText: Bool {
+        guard let field = searchFieldEditor else { return true }
+        let selection = field.selectedRange()
+        return selection.length == 0 && selection.location == field.string.utf16.count
+            && !field.hasMarkedText()
+    }
+
     private static let escapeKey: UInt16 = 53
     private static let returnKey: UInt16 = 36
     private static let enterKey: UInt16 = 76
+    private static let leftArrow: UInt16 = 123
+    private static let rightArrow: UInt16 = 124
     private static let upArrow: UInt16 = 126
     private static let downArrow: UInt16 = 125
 }

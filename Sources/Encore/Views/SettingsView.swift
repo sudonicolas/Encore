@@ -8,11 +8,10 @@ import AppKit
 private let settingsWidth: CGFloat = 520
 
 struct GeneralSettingsView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @State private var accessBehaviorIsAsk = false
 
     var body: some View {
-        @Bindable var store = store
         Form {
             Section {
                 Toggle("Record clipboard history", isOn: $store.isRecordingEnabled)
@@ -81,7 +80,7 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
+        .scrollDisabledWhereSizedToFit()
         .frame(width: settingsWidth, height: accessNote == nil ? 584 : 634)
         .onAppear {
             store.refreshLaunchAtLoginStatus()
@@ -106,12 +105,11 @@ struct GeneralSettingsView: View {
 }
 
 struct HistorySettingsView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @State private var showingClearConfirmation = false
     @State private var showingEmptyConfirmation = false
 
     var body: some View {
-        @Bindable var store = store
         Form {
             Section {
                 Picker("Keep up to", selection: $store.maxStoredCount) {
@@ -151,7 +149,7 @@ struct HistorySettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
+        .scrollDisabledWhereSizedToFit()
         .frame(width: settingsWidth, height: 360)
         .confirmationDialog("Move all clippings to Recently Deleted?", isPresented: $showingClearConfirmation) {
             Button("Clear History", role: .destructive) { store.clearAll() }

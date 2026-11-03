@@ -8,9 +8,9 @@ import AppKit
 /// floating glass sidebar, the toolbar search field, concentric row selection, grouped
 /// glass toolbar buttons, and scroll-edge effects.
 struct HistoryWindowView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @Environment(\.undoManager) private var undoManager
-    @Bindable private var navigator = AppNavigator.shared
+    @ObservedObject private var navigator = AppNavigator.shared
 
     @State private var selection = Set<UUID>()
     @State private var showingClearAllConfirmation = false
@@ -22,6 +22,7 @@ struct HistoryWindowView: View {
     private var section: HistorySection { navigator.historySection }
     private var isTrash: Bool { section == .recentlyDeleted }
     private var searchText: String { navigator.historySearch }
+    private var searchPrompt: String { isTrash ? "Search Recently Deleted" : "Search Clippings" }
 
     /// Everything in the current section, before search.
     private var sectionItems: [Clipping] {
@@ -29,8 +30,9 @@ struct HistoryWindowView: View {
     }
 
     private var items: [Clipping] {
-        guard !searchText.isEmpty else { return sectionItems }
-        return sectionItems.filter { $0.searchableText.localizedCaseInsensitiveContains(searchText) }
+        let query = SearchQuery(searchText)
+        guard !query.isEmpty else { return sectionItems }
+        return sectionItems.filter { query.matches($0.searchableText) }
     }
 
     var body: some View {
@@ -41,16 +43,16 @@ struct HistoryWindowView: View {
         } detail: {
             detail
         }
-        .searchable(
+        .modifier(ToolbarSearch(
             text: $navigator.historySearch,
-            placement: .toolbar,
-            prompt: isTrash ? "Search Recently Deleted" : "Search Clippings"
-        )
+            prompt: searchPrompt,
+            isInToolbar: !navigator.historyUsesInlineToolbar
+        ))
         .frame(minWidth: 780, minHeight: 440)
         .environment(\.textScale, store.textSize.scale)
-        .onChange(of: navigator.historySection) { selection = [] }
-        .onChange(of: store.clippings) { pruneSelection() }
-        .onChange(of: store.deletedClippings) { pruneSelection() }
+        .onChangeCompat(of: navigator.historySection) { _ in selection = [] }
+        .onChangeCompat(of: store.clippings) { _ in pruneSelection() }
+        .onChangeCompat(of: store.deletedClippings) { _ in pruneSelection() }
         .confirmationDialog(
             "Move all clippings to Recently Deleted?",
             isPresented: $showingClearAllConfirmation
@@ -133,6 +135,9 @@ struct HistoryWindowView: View {
         .navigationSubtitle(subtitle)
         .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 520)
         .toolbar { listToolbar }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if navigator.historyUsesInlineToolbar { inlineListBar }
+        }
         .trashUndoToast(requiresKeyWindow: true)
         .overlay(alignment: .bottom) {
             if showingCopiedToast {
@@ -279,58 +284,92 @@ struct HistoryWindowView: View {
     @ToolbarContentBuilder
     private var listToolbar: some ToolbarContent {
         ToolbarItem {
-            if isTrash {
-                Menu {
-                    Button("Restore All") {
-                        withAnimation(.snappy(duration: 0.25).motionSafe) { store.restoreAllDeleted() }
-                    }
-                    Divider()
-                    Button("Delete All\u{2026}", role: .destructive) {
-                        showingEmptyConfirmation = true
-                    }
-                } label: {
-                    Label("Recently Deleted Actions", systemImage: "ellipsis")
+            listActions
+        }
+    }
+
+    /// macOS 13's stand-in for the toolbar over the list: what the window title and
+    /// subtitle say, the list's actions, and the search field.
+    private var inlineListBar: some View {
+        VStack(spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(section.title)
+                        .font(.headline)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .disabled(store.deletedClippings.isEmpty)
-                .help("Restore or permanently delete everything")
-            } else {
-                Menu {
-                    Button("Clear Unpinned Clippings") {
-                        withAnimation(.snappy(duration: 0.25).motionSafe) { store.clearUnpinned(undoManager: undoManager) }
-                    }
-                    .disabled(!store.clippings.contains { !$0.isPinned })
-                    Button("Clear All Clippings\u{2026}") {
-                        showingClearAllConfirmation = true
-                    }
-                } label: {
-                    Label("Clear", systemImage: "trash")
-                }
-                .disabled(store.clippings.isEmpty)
-                .help("Clear history")
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+                Spacer()
+                listActions
+                    .labelStyle(.iconOnly)
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
             }
+            InlineSearchField(text: $navigator.historySearch, prompt: searchPrompt)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    @ViewBuilder
+    private var listActions: some View {
+        if isTrash {
+            Menu {
+                Button("Restore All") {
+                    withAnimation(.snappy(duration: 0.25).motionSafe) { store.restoreAllDeleted() }
+                }
+                Divider()
+                Button("Delete All\u{2026}", role: .destructive) {
+                    showingEmptyConfirmation = true
+                }
+            } label: {
+                Label("Recently Deleted Actions", systemImage: "ellipsis")
+            }
+            .disabled(store.deletedClippings.isEmpty)
+            .help("Restore or permanently delete everything")
+        } else {
+            Menu {
+                Button("Clear Unpinned Clippings") {
+                    withAnimation(.snappy(duration: 0.25).motionSafe) { store.clearUnpinned(undoManager: undoManager) }
+                }
+                .disabled(!store.clippings.contains { !$0.isPinned })
+                Button("Clear All Clippings\u{2026}") {
+                    showingClearAllConfirmation = true
+                }
+            } label: {
+                Label("Clear", systemImage: "trash")
+            }
+            .disabled(store.clippings.isEmpty)
+            .help("Clear history")
         }
     }
 
     @ViewBuilder
     private var emptyState: some View {
         if !searchText.isEmpty {
-            ContentUnavailableView.search(text: searchText)
+            SearchEmptyStateView(text: searchText)
         } else {
             switch section {
             case .recentlyDeleted:
-                ContentUnavailableView {
+                EmptyStateView {
                     Label("No Recently Deleted Clippings", systemImage: "trash")
                 } description: {
                     Text("Deleted clippings stay here for \(ClipboardStore.recentlyDeletedRetentionDays) days before they're removed permanently.")
                 }
             case .pinned:
-                ContentUnavailableView {
+                EmptyStateView {
                     Label("No Pinned Clippings", systemImage: "pin")
                 } description: {
                     Text("Pinned clippings stay at the top and are never removed automatically.")
                 }
             default:
-                ContentUnavailableView {
+                EmptyStateView {
                     Label("No Clippings", systemImage: section.symbol)
                 } description: {
                     Text("Anything you copy will appear here.")
@@ -354,7 +393,7 @@ struct HistoryWindowView: View {
             .id(id)
             .scaledFont(.body)
         } else if selection.count > 1 {
-            ContentUnavailableView {
+            EmptyStateView {
                 Label("\(selection.count) Clippings Selected", systemImage: "square.on.square")
             } actions: {
                 if isTrash {
@@ -366,7 +405,7 @@ struct HistoryWindowView: View {
                 }
             }
         } else {
-            ContentUnavailableView {
+            EmptyStateView {
                 Label("No Clipping Selected", systemImage: "doc.on.clipboard")
             } description: {
                 Text("Select a clipping to see it in full.")
@@ -417,7 +456,7 @@ private struct HistoryRow: View {
     /// Set in Recently Deleted, where the countdown replaces the capture time.
     let daysRemaining: Int?
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
 
     /// With an Apple Intelligence title, the title leads and the text's opening follows.
     private var smartTitle: String? {
@@ -505,14 +544,15 @@ private struct HistoryDetail: View {
     let isDeleted: Bool
     var onDeleteImmediately: () -> Void
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
+    @ObservedObject private var navigator = AppNavigator.shared
     @State private var selectedText: String?
-    @State private var runner = TextActionRunner()
+    @StateObject private var runner = TextActionRunner()
 
     var body: some View {
         ClippingDetailView(
             clipping: clipping,
-            runner: isDeleted ? nil : runner,
+            runner: isDeleted ? .inactive : runner,
             searchQuery: searchQuery,
             selectedText: $selectedText,
             isEditable: !isDeleted
@@ -521,17 +561,7 @@ private struct HistoryDetail: View {
             .toolbar {
                 if isDeleted {
                     ToolbarItemGroup {
-                        Button {
-                            withAnimation(.snappy(duration: 0.25).motionSafe) { store.restoreClipping(clipping.id) }
-                        } label: {
-                            Label("Restore", systemImage: "arrow.uturn.backward")
-                        }
-                        .help("Restore")
-
-                        Button(role: .destructive, action: onDeleteImmediately) {
-                            Label("Delete Immediately", systemImage: "trash")
-                        }
-                        .help("Delete Immediately")
+                        deletedActions
                     }
                 } else {
                     // Its own glass group, only when there's something to show, so image
@@ -545,11 +575,98 @@ private struct HistoryDetail: View {
                         }
                     }
                     ToolbarItemGroup {
-                        ClippingCopyButton(clipping: clipping, textOverride: selectedText)
-                        ClippingPinButton(clipping: clipping)
-                        ClippingDeleteButton(clipping: clipping)
+                        clippingActions
                     }
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if navigator.historyUsesInlineToolbar { inlineBar }
+            }
+    }
+
+    @ViewBuilder
+    private var deletedActions: some View {
+        Button {
+            withAnimation(.snappy(duration: 0.25).motionSafe) { store.restoreClipping(clipping.id) }
+        } label: {
+            Label("Restore", systemImage: "arrow.uturn.backward")
+        }
+        .help("Restore")
+
+        Button(role: .destructive, action: onDeleteImmediately) {
+            Label("Delete Immediately", systemImage: "trash")
+        }
+        .help("Delete Immediately")
+    }
+
+    @ViewBuilder
+    private var clippingActions: some View {
+        ClippingCopyButton(clipping: clipping, textOverride: selectedText)
+        ClippingPinButton(clipping: clipping)
+        ClippingDeleteButton(clipping: clipping)
+    }
+
+    /// macOS 13's stand-in for the toolbar over the clipping: the title the window would
+    /// show, and the clipping's actions. (No Apple Intelligence menu: it needs macOS 26.)
+    private var inlineBar: some View {
+        HStack(spacing: 12) {
+            Text(clipping.sourceAppName ?? clipping.kindTitle)
+                .font(.headline)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            if isDeleted { deletedActions } else { clippingActions }
+        }
+        .buttonStyle(.borderless)
+        .labelStyle(.iconOnly)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+}
+
+/// Puts the History window's search field in the toolbar, where it has one.
+private struct ToolbarSearch: ViewModifier {
+    @Binding var text: String
+    let prompt: String
+    let isInToolbar: Bool
+
+    func body(content: Content) -> some View {
+        if isInToolbar {
+            content.searchable(text: $text, placement: .toolbar, prompt: prompt)
+        } else {
+            content
+        }
+    }
+}
+
+/// A search field for macOS 13's inline bar, in the look of the toolbar's.
+private struct InlineSearchField: View {
+    @Binding var text: String
+    let prompt: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField(prompt, text: $text)
+                .textFieldStyle(.plain)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Label("Clear Search", systemImage: "xmark.circle.fill")
+                        .labelStyle(.iconOnly)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear Search")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 }

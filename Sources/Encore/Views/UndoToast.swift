@@ -37,7 +37,7 @@ private struct TrashUndoToast: ViewModifier {
     /// popover doesn't also pop a toast in a background History window.
     var requiresKeyWindow: Bool
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @Environment(\.controlActiveState) private var controlActiveState
     @State private var event: TrashEvent?
     @State private var hideTask: Task<Void, Never>?
@@ -62,7 +62,7 @@ private struct TrashUndoToast: ViewModifier {
                     .motionSafeTransition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .onChange(of: store.lastTrash) { _, newValue in
+            .onChangeCompat(of: store.lastTrash) { newValue in
                 guard let newValue else {
                     hide()
                     return

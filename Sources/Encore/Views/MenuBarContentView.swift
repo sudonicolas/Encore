@@ -14,11 +14,11 @@ import AppKit
 /// the same digits shown on those rows — and Escape clears the search, then closes the
 /// popover. ⇧⌘V (see GlobalHotKeyManager) opens and closes the popover from any app.
 struct MenuBarContentView: View {
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @State private var searchText = ""
     @State private var page: Page = .list
     @State private var selectedText: String?
-    @State private var runner = TextActionRunner()
+    @StateObject private var runner = TextActionRunner()
     /// The row chosen with ↑ and ↓.
     @State private var highlightedID: UUID?
     /// The row showing its "Copied" confirmation.
@@ -38,10 +38,9 @@ struct MenuBarContentView: View {
     }
 
     private var filtered: [Clipping] {
-        guard !searchText.isEmpty else { return store.clippings }
-        return store.clippings.filter {
-            $0.searchableText.localizedCaseInsensitiveContains(searchText)
-        }
+        let query = SearchQuery(searchText)
+        guard !query.isEmpty else { return store.clippings }
+        return store.clippings.filter { query.matches($0.searchableText) }
     }
 
     private var pinned: [Clipping] {
@@ -95,7 +94,7 @@ struct MenuBarContentView: View {
         .trashUndoToast(bottomPadding: 62)
         .scaledFont(.body)
         .environment(\.textScale, store.textSize.scale)
-        .onChange(of: store.clippings) { _, clippings in
+        .onChangeCompat(of: store.clippings) { clippings in
             if case .detail(let id) = page, !clippings.contains(where: { $0.id == id }) {
                 go(to: .list)
             }
@@ -104,7 +103,7 @@ struct MenuBarContentView: View {
             if highlighted == nil { highlightedID = clippings.isEmpty ? nil : visibleClippings.first?.id }
             preview.validate(against: clippings)
         }
-        .onChange(of: searchText) { _, newValue in
+        .onChangeCompat(of: searchText) { _ in
             // The rows below the pointer are about to change.
             preview.dismiss()
             // While searching, the top match is ready to copy with Return.
@@ -272,7 +271,7 @@ struct MenuBarContentView: View {
                 .padding(.bottom, 4)
                 .animation(.snappy(duration: 0.25).motionSafe, value: store.clippings)
             }
-            .onChange(of: highlightedID) { _, id in
+            .onChangeCompat(of: highlightedID) { id in
                 guard let id else { return }
                 withAnimation(.easeOut(duration: 0.15).motionSafe) { proxy.scrollTo(id) }
             }
@@ -294,9 +293,11 @@ struct MenuBarContentView: View {
                 onCopy: copy,
                 onOpen: openDetail,
                 onHoverChange: { hovering in
-                    if hovering {
+                    // Not while the list slides away to another page, when rows pass
+                    // under a pointer that isn't moving.
+                    if hovering, page == .list {
                         preview.pointerEntered(clipping, query: searchText)
-                    } else {
+                    } else if !hovering {
                         preview.pointerExited(clipping.id)
                     }
                 }
@@ -340,7 +341,7 @@ struct MenuBarContentView: View {
     @ViewBuilder
     private var emptyState: some View {
         if searchText.isEmpty {
-            ContentUnavailableView {
+            EmptyStateView {
                 Label("No Clippings Yet", systemImage: "doc.on.clipboard")
             } description: {
                 Text(store.isRecordingEnabled
@@ -348,7 +349,7 @@ struct MenuBarContentView: View {
                      : "Resume recording to start collecting clippings.")
             }
         } else {
-            ContentUnavailableView.search(text: searchText)
+            SearchEmptyStateView(text: searchText)
         }
     }
 
@@ -379,7 +380,7 @@ struct MenuBarContentView: View {
                     }
                 }
                 .frame(minWidth: 32, minHeight: 32)
-                .buttonBorderShape(store.deletedClippings.isEmpty ? .circle : .capsule)
+                .roundButtonBorder(store.deletedClippings.isEmpty)
                 .help("Recently Deleted")
                 .accessibilityLabel("Recently Deleted")
                 .accessibilityValue(store.deletedClippings.count == 1 ? "1 clipping" : "\(store.deletedClippings.count) clippings")
@@ -394,7 +395,7 @@ struct MenuBarContentView: View {
                         store.isRecordingEnabled ? "Pause Recording" : "Resume Recording",
                         systemImage: store.isRecordingEnabled ? "pause.fill" : "record.circle"
                     )
-                    .contentTransition(.symbolEffect(.replace))
+                    .symbolReplaceTransition()
                 }
                 .frame(width: 32, height: 32)
                 .help(store.isRecordingEnabled ? "Pause Recording" : "Resume Recording")
@@ -429,7 +430,7 @@ struct MenuBarContentView: View {
                 }
             }
             .adaptiveGlassButton()
-            .buttonBorderShape(.circle)
+            .roundButtonBorder()
             .labelStyle(.iconOnly)
             .controlSize(.large)
         }
@@ -555,8 +556,12 @@ struct MenuBarContentView: View {
             return page == .list ? moveHighlight(by: 1) : false
         case .moveUp:
             return page == .list ? moveHighlight(by: -1) : false
-        case .openDetail:
+        case .openDetail, .drillIn:
             return page == .list ? openHighlighted() : false
+        case .back:
+            guard page != .list else { return false }
+            go(to: .list)
+            return true
         case .quickSlot(let slot):
             return page == .list ? copyQuickSlot(slot) : false
         case .typing:
@@ -691,8 +696,8 @@ private struct DetailHeader: View {
 
             AdaptiveGlassContainer(spacing: 6) {
                 HStack(spacing: 6) {
-                    IntelligenceMenu(clipping: clipping, runner: runner)
-                        .menuStyle(.button)
+                    IntelligenceMenu(clipping: clipping, runner: runner, drawsGlass: true)
+                        .adaptiveGlassMenu()
                     ClippingCopyButton(clipping: clipping, textOverride: selectedText)
                     ClippingPinButton(clipping: clipping)
                     ClippingDeleteButton(clipping: clipping, onDeleted: onBack)
@@ -700,9 +705,10 @@ private struct DetailHeader: View {
             }
         }
         .adaptiveGlassButton()
-        .buttonBorderShape(.circle)
+        .roundButtonBorder()
         .labelStyle(.iconOnly)
         .controlSize(.large)
+        .environment(\.glassIconSide, GlassIconMetrics.side)
         .padding(10)
         .task {
             // After the page transition, so VoiceOver lands on the settled view.

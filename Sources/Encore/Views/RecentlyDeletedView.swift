@@ -6,7 +6,7 @@ import SwiftUI
 struct RecentlyDeletedPage: View {
     var onBack: () -> Void
 
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
     @AccessibilityFocusState private var isTitleFocused: Bool
 
     var body: some View {
@@ -14,7 +14,7 @@ struct RecentlyDeletedPage: View {
         // MenuBarContentView.listPage).
         ZStack {
             if store.deletedClippings.isEmpty {
-                ContentUnavailableView {
+                EmptyStateView {
                     Label("No Recently Deleted Clippings", systemImage: "trash")
                 } description: {
                     Text("Deleted clippings stay here for \(ClipboardStore.recentlyDeletedRetentionDays) days.")
@@ -59,7 +59,7 @@ struct RecentlyDeletedPage: View {
                 Label("Back", systemImage: "chevron.left")
             }
             .adaptiveGlassButton()
-            .buttonBorderShape(.circle)
+            .roundButtonBorder()
             .labelStyle(.iconOnly)
             .keyboardShortcut(.cancelAction)
             .help("Back")
@@ -98,7 +98,7 @@ struct RecentlyDeletedPage: View {
 /// permanent delete.
 private struct DeletedClippingRow: View {
     let clipping: Clipping
-    @Environment(ClipboardStore.self) private var store
+    @EnvironmentObject private var store: ClipboardStore
 
     private var title: String { store.displayTitle(for: clipping) }
     private var smartTitle: String? { store.generatesSmartTitles ? clipping.smartTitle : nil }
@@ -164,7 +164,6 @@ private struct DeletedClippingRow: View {
 struct DaysRemainingText: View {
     let days: Int
 
-    @Environment(\.backgroundProminence) private var backgroundProminence
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
 
     private var isUrgent: Bool { days <= 3 }
@@ -176,19 +175,21 @@ struct DaysRemainingText: View {
     }
 
     var body: some View {
-        HStack(spacing: 3) {
-            if isUrgent, differentiateWithoutColor {
-                Image(systemName: "clock.badge.exclamationmark")
-                    .accessibilityHidden(true)
+        BackgroundProminenceReader { isProminent in
+            HStack(spacing: 3) {
+                if isUrgent, differentiateWithoutColor {
+                    Image(systemName: "clock.badge.exclamationmark")
+                        .accessibilityHidden(true)
+                }
+                Text(Self.phrase(days))
             }
-            Text(Self.phrase(days))
+            .foregroundStyle(style(onProminentBackground: isProminent))
         }
-        .foregroundStyle(style)
     }
 
-    private var style: AnyShapeStyle {
+    private func style(onProminentBackground: Bool) -> AnyShapeStyle {
         guard isUrgent else { return AnyShapeStyle(.secondary) }
         // On a selected row's accent fill, orange would clash and lose contrast.
-        return backgroundProminence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.warningText)
+        return onProminentBackground ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.warningText)
     }
 }

@@ -13,7 +13,7 @@ final class SettingsWindowController: NSWindowController {
         tabs.canPropagateSelectedChildViewControllerTitle = true
 
         func pane(_ title: String, symbol: String, _ view: some View) -> NSTabViewItem {
-            let host = NSHostingController(rootView: AnyView(view.environment(store)))
+            let host = NSHostingController(rootView: AnyView(view.environmentObject(store)))
             host.sizingOptions = [.preferredContentSize]
             host.title = title
             let item = NSTabViewItem(viewController: host)

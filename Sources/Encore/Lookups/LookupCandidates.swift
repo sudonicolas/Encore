@@ -14,17 +14,25 @@ struct MoneyAmount: Equatable, Hashable {
 /// amount of money (exchange rates).
 struct LookupCandidates: Equatable {
     var money: MoneyAmount?
+    /// A weight, length, temperature, volume or speed, converted on this Mac.
+    var unit: UnitAmount?
     var word: String?
     var topic: String?
 
-    var isEmpty: Bool { money == nil && word == nil && topic == nil }
+    var isEmpty: Bool { money == nil && unit == nil && word == nil && topic == nil }
 
-    init(text: String) {
+    /// `online` is the "online lookups" setting: with it off only the conversions that
+    /// never leave the Mac are offered.
+    init(text: String, online: Bool = true) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 60, !trimmed.contains(where: \.isNewline) else { return }
 
-        if let money = Self.money(in: trimmed) {
+        if online, let money = Self.money(in: trimmed) {
             self.money = money
+        } else if let unit = UnitAmount.parse(trimmed) {
+            self.unit = unit
+        } else if !online {
+            return
         } else if trimmed.wholeMatch(of: Self.wordPattern) != nil {
             word = trimmed
             topic = trimmed
