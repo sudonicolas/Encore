@@ -10,6 +10,8 @@ import AppKit
 struct IntelligenceMenu: View {
     let clipping: Clipping
     let runner: TextActionRunner
+    /// Draws its own glass circle, for the popover's floating buttons; toolbars supply theirs.
+    var drawsGlass = false
 
     /// Whether the menu has anything to offer: a non-empty text clipping, on a Mac that
     /// can run Apple Intelligence.
@@ -24,32 +26,103 @@ struct IntelligenceMenu: View {
         return text
     }
 
+    @ViewBuilder
+    private func menuItems(text: String, status: Intelligence.Status) -> some View {
+        if status == .available {
+            Section("Rewrite") {
+                ForEach(TextAction.rewrites) { item($0, text: text) }
+            }
+            Section("Understand") {
+                ForEach(TextAction.insights) { item($0, text: text) }
+            }
+        } else {
+            Text(status.explanation)
+            if status == .notEnabled {
+                Button("Open Apple Intelligence Settings\u{2026}", action: Intelligence.openSettings)
+            }
+        }
+    }
+
+    /// A real glass button, so it is exactly the size and look of its neighbours, hover and
+    /// press included. A SwiftUI menu ignores the glass button style and flattens its label,
+    /// so the button pops up an AppKit menu with the same items instead.
+    @available(macOS 26.0, *)
+    private func glassMenu(text: String, status: Intelligence.Status) -> some View {
+        Button {
+            popUpMenu(text: text, status: status)
+        } label: {
+            Label("Apple Intelligence", systemImage: "sparkles")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.secondary)
+                .glassIconFrame()
+        }
+        .help("Proofread, rewrite or summarize with Apple Intelligence")
+        .accessibilityInputLabels(["Apple Intelligence", "Writing Tools", "Sparkles"])
+    }
+
+    /// Only reached from the glass button, which exists on macOS 26 and later.
+    @available(macOS 26.0, *)
+    private func popUpMenu(text: String, status: Intelligence.Status) {
+        let menu = NSMenu()
+        func add(_ title: String, symbol: String? = nil, action: (() -> Void)?) {
+            let item = ClosureMenuItem(title: title, action: action)
+            if let symbol { item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) }
+            menu.addItem(item)
+        }
+        if status == .available {
+            menu.addItem(.sectionHeader(title: "Rewrite"))
+            for action in TextAction.rewrites {
+                add(action.title, symbol: action.symbol) { run(action, text: text) }
+            }
+            menu.addItem(.sectionHeader(title: "Understand"))
+            for action in TextAction.insights {
+                add(action.title, symbol: action.symbol) { run(action, text: text) }
+            }
+        } else {
+            add(status.explanation, action: nil)
+            if status == .notEnabled {
+                menu.addItem(.separator())
+                add("Open Apple Intelligence Settings\u{2026}", action: Intelligence.openSettings)
+            }
+        }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    private func run(_ action: TextAction, text: String) {
+        withAnimation(.snappy(duration: 0.25).motionSafe) {
+            runner.run(action, on: text)
+        }
+    }
+
     var body: some View {
         let status = Intelligence.status
         if let text = Self.text(of: clipping), Intelligence.isPossible {
+            if drawsGlass, #available(macOS 26.0, *) {
+                glassMenu(text: text, status: status)
+            } else {
+                nativeMenu(text: text, status: status)
+            }
+        }
+    }
+
+    private func nativeMenu(text: String, status: Intelligence.Status) -> some View {
+        Group {
             Menu {
-                if status == .available {
-                    Section("Rewrite") {
-                        ForEach(TextAction.rewrites) { item($0, text: text) }
-                    }
-                    Section("Understand") {
-                        ForEach(TextAction.insights) { item($0, text: text) }
-                    }
-                } else {
-                    Text(status.explanation)
-                    if status == .notEnabled {
-                        Button("Open Apple Intelligence Settings\u{2026}", action: Intelligence.openSettings)
-                    }
-                }
+                menuItems(text: text, status: status)
             } label: {
+                // Spelled out like the sibling buttons' labels: a menu label otherwise draws
+                // its glyph smaller and in the primary colour.
                 Label("Apple Intelligence", systemImage: "sparkles")
+                    .labelStyle(.iconOnly)
+                    .imageScale(.large)
+                    .foregroundStyle(.secondary)
             }
             .menuIndicator(.hidden)
-            // Hiding the indicator stops it being drawn but not the width being kept for
-            // it, which left the sparkles pushed off-centre in a pill wider than the round
-            // buttons beside it. Sizing to the label drops that reserved space, and the
-            // circular border shape then matches its neighbours.
-            .fixedSize()
+            // On macOS 15, hiding the indicator stops it being drawn but not the width
+            // being kept for it, which left the sparkles pushed off-centre in a pill wider
+            // than the round buttons beside it. Sizing to the label drops that space. Glass
+            // on 26 and later sizes the menu like any other button, so it's left alone.
+            .compactOnLegacyMacOS()
             .roundButtonBorder()
             .help("Proofread, rewrite or summarize with Apple Intelligence")
             .accessibilityInputLabels(["Apple Intelligence", "Writing Tools", "Sparkles"])
@@ -227,4 +300,20 @@ struct SmartTitleGlyph: View {
                 .help("Title by Apple Intelligence")
         }
     }
+}
+
+/// A menu item that runs a closure; a nil closure makes it a disabled line of text.
+private final class ClosureMenuItem: NSMenuItem {
+    private let handler: (() -> Void)?
+
+    init(title: String, action handler: (() -> Void)?) {
+        self.handler = handler
+        super.init(title: title, action: handler == nil ? nil : #selector(fire), keyEquivalent: "")
+        target = self
+        isEnabled = handler != nil
+    }
+
+    required init(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    @objc private func fire() { handler?() }
 }

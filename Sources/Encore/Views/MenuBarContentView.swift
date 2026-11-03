@@ -697,8 +697,8 @@ private struct DetailHeader: View {
 
             AdaptiveGlassContainer(spacing: 6) {
                 HStack(spacing: 6) {
-                    IntelligenceMenu(clipping: clipping, runner: runner)
-                        .menuStyle(.button)
+                    IntelligenceMenu(clipping: clipping, runner: runner, drawsGlass: true)
+                        .adaptiveGlassMenu()
                     ClippingCopyButton(clipping: clipping, textOverride: selectedText)
                     ClippingPinButton(clipping: clipping)
                     ClippingDeleteButton(clipping: clipping, onDeleted: onBack)
@@ -709,6 +709,7 @@ private struct DetailHeader: View {
         .roundButtonBorder()
         .labelStyle(.iconOnly)
         .controlSize(.large)
+        .environment(\.glassIconSide, GlassIconMetrics.side)
         .padding(10)
         .task {
             // After the page transition, so VoiceOver lands on the settled view.
