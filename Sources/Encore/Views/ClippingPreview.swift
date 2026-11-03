@@ -430,15 +430,10 @@ private struct PreviewTextView: NSViewRepresentable {
         return view
     }
 
-    /// The same clipping previewed again after the search query or the card's width
-    /// changed arrives as a fresh `PreviewText` — new storage, new container — under the
-    /// same id. Without this the old layout stays on screen, e.g. still showing search
-    /// highlighting for a query that has since been cleared.
-    func updateNSView(_ nsView: NSTextView, context: Context) {
-        guard nsView.textContainer !== text.container else { return }
-        nsView.replaceTextContainer(text.container)
-        nsView.frame = NSRect(origin: .zero, size: text.usedSize)
-    }
+    /// Nothing to update: a fresh `PreviewText` (new storage, new container) gets a fresh
+    /// text view, because the view is keyed on the container (see `ClippingPreviewView`).
+    /// Swapping the container of a live NSTextView left the text blank.
+    func updateNSView(_ nsView: NSTextView, context: Context) {}
 }
 
 // MARK: - View
@@ -464,7 +459,7 @@ struct ClippingPreviewView: View {
             }
             if let text = preview.text {
                 PreviewTextView(text: text)
-                    .id(preview.clippingID)
+                    .id(ObjectIdentifier(text.container))
                     .frame(width: preview.size.width - 2 * ClippingPreview.padding, height: text.usedSize.height, alignment: .topLeading)
                     .mask { fade }
             }

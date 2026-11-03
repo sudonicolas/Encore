@@ -89,7 +89,6 @@ struct MenuBarContentView: View {
             }
         }
         .frame(width: popoverSize.width, height: popoverSize.height)
-        .solidOnLegacyMacOS()
         // At the root, not on the list page: deleting from the detail page returns to
         // the list, and the toast must survive that page swap.
         .trashUndoToast(bottomPadding: 62)

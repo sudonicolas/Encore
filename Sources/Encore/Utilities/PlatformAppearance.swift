@@ -57,11 +57,14 @@ extension View {
     /// A glass background in any shape, not just a capsule: the hover preview card is a
     /// rounded rectangle. A plain material stands in before macOS 26.
     @ViewBuilder
-    func adaptiveGlass<S: Shape>(in shape: S) -> some View {
+    func adaptiveGlass<S: InsettableShape>(in shape: S) -> some View {
         if #available(macOS 26.0, *) {
             glassEffect(.regular, in: shape)
         } else {
-            background(.regularMaterial, in: shape)
+            // The popover's own frosted material (NSPopover draws it behind the popover),
+            // so the card and the popover blur the wallpaper identically.
+            background { PopoverMaterial().clipShape(shape) }
+                .overlay { shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5) }
         }
     }
 
@@ -93,13 +96,33 @@ extension View {
         if #available(macOS 26.0, *) {
             safeAreaBar(edge: edge, content: content)
         } else {
+            // Clear: the popover's frosted material shows through, so the bars and the
+            // list are one surface. A hairline marks where the list scrolls under a bar.
             safeAreaInset(edge: edge, spacing: 0) {
                 content()
                     .frame(maxWidth: .infinity)
-                    .background(.bar)
+                    .overlay(alignment: edge == .top ? .bottom : .top) {
+                        Rectangle()
+                            .fill(Color(nsColor: .separatorColor))
+                            .frame(height: 0.5)
+                    }
             }
         }
     }
+}
+
+/// The material NSPopover draws behind its content, for surfaces that sit beside the
+/// popover (the hover preview) and must match it exactly.
+struct PopoverMaterial: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .popover
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
 /// Compact outlined controls for the pre-Liquid Glass popover. The system bordered
@@ -175,18 +198,6 @@ extension View {
             buttonBorderShape(circle ? .circle : .capsule)
         } else {
             self
-        }
-    }
-
-    /// Before macOS 26 the popover is a solid panel. Its own translucent material was
-    /// being stacked with the bars' materials and the wallpaper behind it, and the result
-    /// was muddy, with a visibly different shade band at the top and bottom.
-    @ViewBuilder
-    func solidOnLegacyMacOS() -> some View {
-        if #available(macOS 26.0, *) {
-            self
-        } else {
-            background(Color(nsColor: .windowBackgroundColor))
         }
     }
 
